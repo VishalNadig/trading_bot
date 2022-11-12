@@ -9,13 +9,13 @@ import logging
 import time
 from datetime import datetime, timedelta
 from time import sleep
-
+import toml
 import pandas as pd
 import requests
 from pandas.core.frame import DataFrame
 from tradingview_ta import Interval, TA_Handler
+from pprint import pprint
 
-parser = argparse.ArgumentParser()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,6 +23,8 @@ logging.basicConfig(
     filename="LOGFILE_PI",
     format="%(asctime)s;%(levelname)s;%(message)s",
 )
+PARSER = argparse.ArgumentParser()
+CONFIG_FILE = "/Users/akshathanadig/Downloads/git/trading_bot/config.toml"
 SCREENER_LIST = ["India", "Crypto"]
 INITIAL_INVESTMENT = 0.00037751708  # In BTC
 # LOGFILE = r"/Users/akshathanadig/Downloads/Education/Computer Science/Python/Trading Bot/LOGFILE_MAC.log"
@@ -45,16 +47,11 @@ INTERVAL_DICT = {
     "1W": Interval.INTERVAL_1_WEEK,
     "1M": Interval.INTERVAL_1_MONTH,
 }
-
-
 # HISTORY_COLS = ["market", "last_price", "quantity", "type", "side", "timestamp", 'order_id']
 # history_file = pd.DataFrame(columns=HISTORY_COLS)
 # history_file.to_csv(ORDER_HISTORY_FILE, mode="w")
 TODAY = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
-CONFIG = configparser.RawConfigParser()
-CONFIG.read(r"/home/pi/python_projects/trading_bot/config.ini")
-KEY = CONFIG["key"]["key"]
-SECRET = CONFIG["secret_key"]["secret"]
+CONFIG = toml.load(CONFIG_FILE)
 URL_DICT = {
     "MARKET_DATA_URL": "https://api.coindcx.com/exchange/ticker",
     "NEW_ORDER_URL": "https://api.coindcx.com/exchange/v1/orders/create",
@@ -96,6 +93,16 @@ REMOVE_CURRENCIES = {
 }
 
 
+def get_keys(user: str = "VishalNadig", first_name: str = "Vishal", last_name: str = "Nadig") -> tuple:
+    if first_name and last_name != "":
+        user = first_name+last_name
+    user = user.lower()
+    user = user.replace(" ", "")
+    key = CONFIG["accounts"]["api_key"]
+    secret_key = CONFIG["accounts"]["secret_key"]
+    return key[user], secret_key[user]
+
+
 def get_market_data() -> pd.DataFrame:
     """Get the market data and filter it to our needs"""
     data = requests.get(URL_DICT["MARKET_DATA_URL"]).json()
@@ -124,10 +131,10 @@ def get_market_data() -> pd.DataFrame:
     return df
 
 
-def place_buy_limit_order(market, price, total_quantity) -> None:
+def place_buy_limit_order(market: str, price: float, total_quantity: float) -> None:
     """Place a buy order by reading the current price and checking if the price is what we want"""
-    key = KEY
-    secret = SECRET
+    key = get_keys()[0]
+    secret = get_keys()[1]
 
     secret_bytes = bytes(secret, encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
@@ -166,9 +173,9 @@ def place_buy_limit_order(market, price, total_quantity) -> None:
     file.close()
 
 
-def place_sell_limit_order(market, price, total_quantity) -> None:
+def place_sell_limit_order(market: str, price: float, total_quantity: float) -> None:
     """Place a sell order by reading the current price and checking if the price is what we want"""
-    secret_bytes = bytes(SECRET, encoding="utf-8")
+    secret_bytes = bytes(get_keys()[1], encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
     # message = (
     #     f"Sell order of {total_quantity} for market {market} placed at {price} price"
@@ -187,7 +194,7 @@ def place_sell_limit_order(market, price, total_quantity) -> None:
 
     headers = {
         "Content-Type": "application/json",
-        "X-AUTH-APIKEY": KEY,
+        "X-AUTH-APIKEY": get_keys()[0],
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(URL_DICT["NEW_ORDER_URL"], data=json_body, headers=headers)
@@ -209,9 +216,9 @@ def place_sell_limit_order(market, price, total_quantity) -> None:
     file.close()
 
 
-def place_market_buy_order(market, total_quantity) -> None:
+def place_market_buy_order(market: str, total_quantity: float) -> None:
     """Place buy order at current market price"""
-    secret_bytes = bytes(SECRET, encoding="utf-8")
+    secret_bytes = bytes(get_keys()[1], encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
 
     body = {
@@ -227,7 +234,7 @@ def place_market_buy_order(market, total_quantity) -> None:
 
     headers = {
         "Content-Type": "application/json",
-        "X-AUTH-APIKEY": KEY,
+        "X-AUTH-APIKEY": get_keys()[0],
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(URL_DICT["NEW_ORDER_URL"], data=json_body, headers=headers)
@@ -249,10 +256,10 @@ def place_market_buy_order(market, total_quantity) -> None:
     file.close()
 
 
-def place_market_sell_order(market, total_quantity) -> None:
+def place_market_sell_order(market: str, total_quantity: float) -> None:
     """Place sell order at current market price"""
 
-    secret_bytes = bytes(SECRET, encoding="utf-8")
+    secret_bytes = bytes(get_keys()[1], encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
 
     body = {
@@ -268,7 +275,7 @@ def place_market_sell_order(market, total_quantity) -> None:
 
     headers = {
         "Content-Type": "application/json",
-        "X-AUTH-APIKEY": KEY,
+        "X-AUTH-APIKEY": get_keys()[0],
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(URL_DICT["NEW_ORDER_URL"], data=json_body, headers=headers)
@@ -291,8 +298,8 @@ def place_market_sell_order(market, total_quantity) -> None:
 
 
 def create_multiple_orders() -> None:
-    key = KEY
-    secret = SECRET
+    key = get_keys()[0]
+    secret = get_keys()[1]
     secret_bytes = bytes(secret, encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
     body = {
@@ -336,8 +343,8 @@ def create_multiple_orders() -> None:
 
 
 def active_orders() -> pd.DataFrame:
-    key = KEY
-    secret = SECRET
+    key = get_keys()[0]
+    secret = get_keys()[1]
 
     secret_bytes = bytes(secret, encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
@@ -361,8 +368,8 @@ def active_orders() -> pd.DataFrame:
 
 
 def account_trade_history() -> pd.DataFrame:
-    key = KEY
-    secret = SECRET
+    key = get_keys()[0]
+    secret = get_keys()[1]
     secret_bytes = bytes(secret, encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
 
@@ -383,7 +390,7 @@ def account_trade_history() -> pd.DataFrame:
 
 
 def cancel_order(id) -> None:
-    key = KEY
+    key = get_keys()[0]
     secret = CONFIG["secret_code"]["secret"]
 
     secret_bytes = bytes(secret, encoding="utf-8")
@@ -406,7 +413,7 @@ def cancel_order(id) -> None:
 
 def cancel_all_orders() -> None:
     pass
-    key = KEY
+    key = get_keys()[0]
     secret = CONFIG["secret_code"]["secret"]
 
     secret_bytes = bytes(secret, encoding="utf-8")
@@ -433,7 +440,7 @@ def cancel_all_orders() -> None:
 
 def cancel_multiple_by_ids() -> None:
     pass
-    key = KEY
+    key = get_keys()[0]
     secret = CONFIG["secret_code"]["secret"]
 
     secret_bytes = bytes(secret, encoding="utf-8")
@@ -462,9 +469,9 @@ def cancel_multiple_by_ids() -> None:
     print(data)
 
 
-def edit_price_of_orders(id, price) -> None:
+def edit_price_of_orders(id, price: float) -> None:
     pass
-    key = KEY
+    key = get_keys()[0]
     secret = CONFIG["secret_code"]["secret"]
     secret_bytes = bytes(secret, encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
@@ -623,9 +630,9 @@ def auto_trader(symbol, market, screener_name, interval) -> None:
             logging.info(f"made {profit}% profits!")
 
 
-def get_account_balance() -> pd.DataFrame:
-    key = KEY
-    secret = SECRET
+def get_account_balance(user: str = "VishalNadig") -> pd.DataFrame:
+    key = get_keys(user=user)[0]
+    secret = get_keys(user=user)[1]
     secret_bytes = bytes(secret, encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
     body = {"timestamp": timeStamp}
@@ -641,13 +648,24 @@ def get_account_balance() -> pd.DataFrame:
         URL_DICT["ACCOUNT_BALANCE_URL"], data=json_body, headers=headers
     )
     data = response.json()
-    dataframe = pd.DataFrame.from_dict(data)
+    dataframe = {}
     # dataframe.to_csv("account_balance.csv")
-    account_balance = dataframe["balance"].iloc[-1]
-    return float(account_balance)
+    # account_balance = dataframe["balance"]
+    for DATA in data:
+        if (
+            float(DATA["balance"]) > 0.1
+            or float(DATA["locked_balance"]) > 0.1
+            or "BTC" in DATA["currency"]
+        ):
+            dataframe[DATA["currency"]] = {
+                "Balance": DATA["balance"],
+                "Locked Balance": DATA["locked_balance"],
+            }
+
+    return dataframe
 
 
-def get_candles(market, coin1, coin2, limit, interval) -> pd.DataFrame:
+def get_candles(market: str, coin1: str, coin2: str, limit: int = 100, interval: str = "4h") -> pd.DataFrame:
     """
     Get candle data.
     market: B- Binance, I- CoinDCX, HB- HitBTC, H- Huobi, BM- BitMex
@@ -672,7 +690,7 @@ def get_candles(market, coin1, coin2, limit, interval) -> pd.DataFrame:
     return dataframe
 
 
-def indicator_data(symbol, market, screener_name, interval) -> list:
+def indicator_data(symbol, market: str, screener_name: str = "Crypto", interval: str = "4h") -> list:
     """Get complete indicator data from Trading View.
     symbol: Ticker Ex: "CIPLA", "TATAMOTORS", "XVGBTC", "BTCUSDT"
     market: Exchange ("NSE", "BSE", "Binance")
@@ -689,18 +707,18 @@ def indicator_data(symbol, market, screener_name, interval) -> list:
 
 
 def parser_activated_bot() -> None:
-    parser.add_argument(
+    PARSER.add_argument(
         "-s", "--symbol", help="The symbol of the stock to trade", required=True
     )
-    parser.add_argument("-m", "--market", help="The market to trade", required=True)
-    parser.add_argument("-S", "--Screener", help="Name of screener", required=True)
-    parser.add_argument(
+    PARSER.add_argument("-m", "--market", help="The market to trade", required=True)
+    PARSER.add_argument("-S", "--Screener", help="Name of screener", required=True)
+    PARSER.add_argument(
         "-i",
         "--interval",
         help="The chart interval to get the indicator",
         required=True,
     )
-    args = parser.parse_args()
+    args = PARSER.parse_args()
     auto_trader(
         symbol=args.symbol,
         market=args.market,
@@ -716,6 +734,7 @@ if __name__ == "__main__":
     # place_market_sell_order()
     # get_candles("B", "QKC", "BTC", 100, "1d")
     # get_account_balance()
+    pprint(get_account_balance())
     # auto_trader("XVGBTC", "Binance", "Crypto", "1d")
     # parser_activated_bot()
     pass
