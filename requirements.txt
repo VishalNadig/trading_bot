@@ -1,4 +1,12 @@
+argparse
+csv
+hashlib
+hmac
+json
+logging
+time
+datetime
+toml
 pandas
-numpy
-matplotlib
-tradingview-ta
+requests
+tradingview_ta
