@@ -1,6 +1,5 @@
 """A crypto trading bot to place buy and sell orders automatically"""
 import argparse
-import configparser
 import csv
 import hashlib
 import hmac
@@ -12,10 +11,9 @@ from time import sleep
 import toml
 import pandas as pd
 import requests
-from pandas.core.frame import DataFrame
 from tradingview_ta import Interval, TA_Handler
 from pprint import pprint
-
+from paths import paths
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,11 +22,10 @@ logging.basicConfig(
     format="%(asctime)s;%(levelname)s;%(message)s",
 )
 PARSER = argparse.ArgumentParser()
-CONFIG_FILE = "/Users/akshathanadig/Downloads/git/trading_bot/config.toml"
+CONFIG_FILE = paths.CONFIG_FILE
 SCREENER_LIST = ["India", "Crypto"]
 INITIAL_INVESTMENT = 0.00037751708  # In BTC
-# LOGFILE = r"/Users/akshathanadig/Downloads/Education/Computer Science/Python/Trading Bot/LOGFILE_MAC.log"
-LOGFILE = r"/home/pi/python_projects/trading_bot/LOGFILE.log"
+LOGFILE = paths.LOGFILE
 ORDER_HISTORY_FILE = r"/home/pi/python_programs/trading_bot/order_history.csv"
 API_DICTS = {
     "coindcx": "https://api.coindcx.com/exchange/ticker",
@@ -93,14 +90,24 @@ REMOVE_CURRENCIES = {
 }
 
 
-def get_keys(user: str = "VishalNadig", first_name: str = "Vishal", last_name: str = "Nadig") -> tuple:
+def get_keys(first_name: str = "", last_name: str = "", user: str = "") -> tuple:
     if first_name and last_name != "":
-        user = first_name+last_name
+        user = first_name + last_name
     user = user.lower()
     user = user.replace(" ", "")
     key = CONFIG["accounts"]["api_key"]
     secret_key = CONFIG["accounts"]["secret_key"]
     return key[user], secret_key[user]
+
+
+def add_keys(first_name: str = "", last_name: str = ""):
+    user = first_name + last_name
+    user = user.lower()
+    user = user.replace(" ", "")
+    with (CONFIG_FILE, "r") as file:
+        config = toml.load(file)
+        if user not in config["accounts"]["user"]:
+            toml.dump(user, file)
 
 
 def get_market_data() -> pd.DataFrame:
@@ -131,12 +138,9 @@ def get_market_data() -> pd.DataFrame:
     return df
 
 
-def place_buy_limit_order(market: str, price: float, total_quantity: float) -> None:
+def place_buy_limit_order(user: str, market: str, price: float, total_quantity: float) -> None:
     """Place a buy order by reading the current price and checking if the price is what we want"""
-    key = get_keys()[0]
-    secret = get_keys()[1]
-
-    secret_bytes = bytes(secret, encoding="utf-8")
+    secret_bytes = bytes(get_keys(user=user)[1], encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
     body = {
         "side": "buy",  # Toggle between 'buy' or 'sell'.
@@ -151,7 +155,7 @@ def place_buy_limit_order(market: str, price: float, total_quantity: float) -> N
 
     headers = {
         "Content-Type": "application/json",
-        "X-AUTH-APIKEY": key,
+        "X-AUTH-APIKEY": get_keys(user=user)[0],
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(URL_DICT["NEW_ORDER_URL"], data=json_body, headers=headers)
@@ -173,9 +177,9 @@ def place_buy_limit_order(market: str, price: float, total_quantity: float) -> N
     file.close()
 
 
-def place_sell_limit_order(market: str, price: float, total_quantity: float) -> None:
+def place_sell_limit_order(user: str, market: str, price: float, total_quantity: float) -> None:
     """Place a sell order by reading the current price and checking if the price is what we want"""
-    secret_bytes = bytes(get_keys()[1], encoding="utf-8")
+    secret_bytes = bytes(get_keys(user=user)[1], encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
     # message = (
     #     f"Sell order of {total_quantity} for market {market} placed at {price} price"
@@ -194,7 +198,7 @@ def place_sell_limit_order(market: str, price: float, total_quantity: float) -> 
 
     headers = {
         "Content-Type": "application/json",
-        "X-AUTH-APIKEY": get_keys()[0],
+        "X-AUTH-APIKEY": get_keys(user=user)[0],
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(URL_DICT["NEW_ORDER_URL"], data=json_body, headers=headers)
@@ -216,9 +220,9 @@ def place_sell_limit_order(market: str, price: float, total_quantity: float) -> 
     file.close()
 
 
-def place_market_buy_order(market: str, total_quantity: float) -> None:
+def place_market_buy_order(user: str, market: str, total_quantity: float) -> None:
     """Place buy order at current market price"""
-    secret_bytes = bytes(get_keys()[1], encoding="utf-8")
+    secret_bytes = bytes(get_keys(user=user)[1], encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
 
     body = {
@@ -234,7 +238,7 @@ def place_market_buy_order(market: str, total_quantity: float) -> None:
 
     headers = {
         "Content-Type": "application/json",
-        "X-AUTH-APIKEY": get_keys()[0],
+        "X-AUTH-APIKEY": get_keys(user=user)[0],
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(URL_DICT["NEW_ORDER_URL"], data=json_body, headers=headers)
@@ -256,10 +260,10 @@ def place_market_buy_order(market: str, total_quantity: float) -> None:
     file.close()
 
 
-def place_market_sell_order(market: str, total_quantity: float) -> None:
+def place_market_sell_order(user: str, market: str, total_quantity: float) -> None:
     """Place sell order at current market price"""
 
-    secret_bytes = bytes(get_keys()[1], encoding="utf-8")
+    secret_bytes = bytes(get_keys(user=user)[1], encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
 
     body = {
@@ -275,7 +279,7 @@ def place_market_sell_order(market: str, total_quantity: float) -> None:
 
     headers = {
         "Content-Type": "application/json",
-        "X-AUTH-APIKEY": get_keys()[0],
+        "X-AUTH-APIKEY": get_keys(user=user)[0],
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(URL_DICT["NEW_ORDER_URL"], data=json_body, headers=headers)
@@ -297,10 +301,8 @@ def place_market_sell_order(market: str, total_quantity: float) -> None:
     file.close()
 
 
-def create_multiple_orders() -> None:
-    key = get_keys()[0]
-    secret = get_keys()[1]
-    secret_bytes = bytes(secret, encoding="utf-8")
+def create_multiple_orders(user: str) -> None:
+    secret_bytes = bytes(get_keys(user=user)[1], encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
     body = {
         "orders": [
@@ -331,7 +333,7 @@ def create_multiple_orders() -> None:
 
     headers = {
         "Content-Type": "application/json",
-        "X-AUTH-APIKEY": key,
+        "X-AUTH-APIKEY": get_keys(user=user)[0],
         "X-AUTH-SIGNATURE": signature,
     }
 
@@ -342,11 +344,8 @@ def create_multiple_orders() -> None:
     print(data)
 
 
-def active_orders() -> pd.DataFrame:
-    key = get_keys()[0]
-    secret = get_keys()[1]
-
-    secret_bytes = bytes(secret, encoding="utf-8")
+def active_orders(user: str) -> pd.DataFrame:
+    secret_bytes = bytes(get_keys(user=user)[1], encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
     body = {
         "side": "buy",  # Toggle between a 'buy' or 'sell' order.
@@ -357,7 +356,7 @@ def active_orders() -> pd.DataFrame:
     signature = hmac.new(secret_bytes, json_body.encode(), hashlib.sha256).hexdigest()
     headers = {
         "Content-Type": "application/json",
-        "X-AUTH-APIKEY": key,
+        "X-AUTH-APIKEY": get_keys(user=user)[0],
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(
@@ -367,10 +366,8 @@ def active_orders() -> pd.DataFrame:
     print(data)
 
 
-def account_trade_history() -> pd.DataFrame:
-    key = get_keys()[0]
-    secret = get_keys()[1]
-    secret_bytes = bytes(secret, encoding="utf-8")
+def account_trade_history(user: str) -> pd.DataFrame:
+    secret_bytes = bytes(get_keys(user=user)[1], encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
 
     body = {"from_id": 352622, "limit": 50, "timestamp": timeStamp}
@@ -379,7 +376,7 @@ def account_trade_history() -> pd.DataFrame:
     signature = hmac.new(secret_bytes, json_body.encode(), hashlib.sha256).hexdigest()
     headers = {
         "Content-Type": "application/json",
-        "X-AUTH-APIKEY": key,
+        "X-AUTH-APIKEY": get_keys(user=user)[0],
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(
@@ -389,11 +386,8 @@ def account_trade_history() -> pd.DataFrame:
     print(data)
 
 
-def cancel_order(id) -> None:
-    key = get_keys()[0]
-    secret = CONFIG["secret_code"]["secret"]
-
-    secret_bytes = bytes(secret, encoding="utf-8")
+def cancel_order(user: str, id) -> None:
+    secret_bytes = bytes(get_keys(user=user)[1], encoding="utf-8")
 
     timeStamp = int(round(time.time() * 1000))
     body = {"id": f"{id}", "timestamp": timeStamp}  # Enter your Order ID here.
@@ -401,7 +395,7 @@ def cancel_order(id) -> None:
     signature = hmac.new(secret_bytes, json_body.encode(), hashlib.sha256).hexdigest()
     headers = {
         "Content-Type": "application/json",
-        "X-AUTH-APIKEY": key,
+        "X-AUTH-APIKEY": get_keys(user=user)[0],
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(
@@ -411,12 +405,8 @@ def cancel_order(id) -> None:
     print(data)
 
 
-def cancel_all_orders() -> None:
-    pass
-    key = get_keys()[0]
-    secret = CONFIG["secret_code"]["secret"]
-
-    secret_bytes = bytes(secret, encoding="utf-8")
+def cancel_all_orders(user: str) -> None:
+    secret_bytes = bytes(get_keys(user=user)[1], encoding="utf-8")
 
     timeStamp = int(round(time.time() * 1000))
     body = {
@@ -428,7 +418,7 @@ def cancel_all_orders() -> None:
     signature = hmac.new(secret_bytes, json_body.encode(), hashlib.sha256).hexdigest()
     headers = {
         "Content-Type": "application/json",
-        "X-AUTH-APIKEY": key,
+        "X-AUTH-APIKEY": get_keys(user=user)[0],
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(
@@ -438,18 +428,14 @@ def cancel_all_orders() -> None:
     print(data)
 
 
-def cancel_multiple_by_ids() -> None:
-    pass
-    key = get_keys()[0]
-    secret = CONFIG["secret_code"]["secret"]
-
-    secret_bytes = bytes(secret, encoding="utf-8")
+def cancel_multiple_by_ids(user:str, ids: list) -> None:
+    secret_bytes = bytes(get_keys(user=user)[1], encoding="utf-8")
 
     body = {
-        "ids": [
-            "8a2f4284-c895-11e8-9e00-5b2c002a6ff4",
-            "8a1d1e4c-c895-11e8-9dff-df1480546936",
-        ]
+        "ids": ids #[
+            #"8a2f4284-c895-11e8-9e00-5b2c002a6ff4",
+            #"8a1d1e4c-c895-11e8-9dff-df1480546936",
+        #]
     }
 
     json_body = json.dumps(body, separators=(",", ":"))
@@ -460,7 +446,7 @@ def cancel_multiple_by_ids() -> None:
 
     headers = {
         "Content-Type": "application/json",
-        "X-AUTH-APIKEY": key,
+        "X-AUTH-APIKEY": get_keys(user=user)[0],
         "X-AUTH-SIGNATURE": signature,
     }
 
@@ -469,11 +455,10 @@ def cancel_multiple_by_ids() -> None:
     print(data)
 
 
-def edit_price_of_orders(id, price: float) -> None:
-    pass
-    key = get_keys()[0]
-    secret = CONFIG["secret_code"]["secret"]
-    secret_bytes = bytes(secret, encoding="utf-8")
+def edit_price_of_orders(user: str, id, price: float) -> None:
+
+
+    secret_bytes = bytes(get_keys(user=user)[1], encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
     body = {
         "id": f"{id}",  # Enter your Order ID here.
@@ -484,7 +469,7 @@ def edit_price_of_orders(id, price: float) -> None:
     signature = hmac.new(secret_bytes, json_body.encode(), hashlib.sha256).hexdigest()
     headers = {
         "Content-Type": "application/json",
-        "X-AUTH-APIKEY": key,
+        "X-AUTH-APIKEY": get_keys(user=user)[0],
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(
@@ -494,7 +479,7 @@ def edit_price_of_orders(id, price: float) -> None:
     print(data)
 
 
-def auto_trader(symbol, market, screener_name, interval) -> None:
+def auto_trader(user: str, symbol, market, screener_name, interval) -> None:
     """Execute trades automatically 24/7 based on input parameters
     symbol: Ticker Ex: "CIPLA", "TATAMOTORS", "XVGBTC", "BTCUSDT"
     market: Exchange ("NSE", "BSE", "Binance")
@@ -607,9 +592,7 @@ def auto_trader(symbol, market, screener_name, interval) -> None:
             and not open_position
             and order_size > min_order_value
         ) or (rsi < 37 and not open_position and order_size > min_order_value):
-            place_buy_limit_order(
-                market="XVGBTC", price=buy_price, total_quantity=order_size
-            )
+            place_buy_limit_order(user=user,market="XVGBTC", price=buy_price, total_quantity=order_size)
             logging.info(
                 f"Buy Order placed! for {symbol} at price {buy_price}. Stop loss is {stop_loss}"
             )
@@ -619,7 +602,7 @@ def auto_trader(symbol, market, screener_name, interval) -> None:
             or float(current_price) == stop_loss
             or (rsi > 60 and open_position)
         ):
-            place_sell_limit_order(
+            place_sell_limit_order(user=user,
                 market="XVGBTC", price=sell_price, total_quantity=order_size
             )
             logging.info(f"Sold XVG {sell_price}")
@@ -631,16 +614,15 @@ def auto_trader(symbol, market, screener_name, interval) -> None:
 
 
 def get_account_balance(user: str = "VishalNadig") -> pd.DataFrame:
-    key = get_keys(user=user)[0]
-    secret = get_keys(user=user)[1]
-    secret_bytes = bytes(secret, encoding="utf-8")
+    
+    secret_bytes = bytes(get_keys(user=user)[1], encoding="utf-8")
     timeStamp = int(round(time.time() * 1000))
     body = {"timestamp": timeStamp}
     json_body = json.dumps(body, separators=(",", ":"))
     signature = hmac.new(secret_bytes, json_body.encode(), hashlib.sha256).hexdigest()
     headers = {
         "Content-Type": "application/json",
-        "X-AUTH-APIKEY": key,
+        "X-AUTH-APIKEY": get_keys(user=user)[0],
         "X-AUTH-SIGNATURE": signature,
     }
 
@@ -665,7 +647,9 @@ def get_account_balance(user: str = "VishalNadig") -> pd.DataFrame:
     return dataframe
 
 
-def get_candles(market: str, coin1: str, coin2: str, limit: int = 100, interval: str = "4h") -> pd.DataFrame:
+def get_candles(
+    market: str, coin1: str, coin2: str, limit: int = 100, interval: str = "4h"
+) -> pd.DataFrame:
     """
     Get candle data.
     market: B- Binance, I- CoinDCX, HB- HitBTC, H- Huobi, BM- BitMex
@@ -690,7 +674,9 @@ def get_candles(market: str, coin1: str, coin2: str, limit: int = 100, interval:
     return dataframe
 
 
-def indicator_data(symbol, market: str, screener_name: str = "Crypto", interval: str = "4h") -> list:
+def indicator_data(
+    symbol, market: str, screener_name: str = "Crypto", interval: str = "4h"
+) -> list:
     """Get complete indicator data from Trading View.
     symbol: Ticker Ex: "CIPLA", "TATAMOTORS", "XVGBTC", "BTCUSDT"
     market: Exchange ("NSE", "BSE", "Binance")
@@ -734,7 +720,9 @@ if __name__ == "__main__":
     # place_market_sell_order()
     # get_candles("B", "QKC", "BTC", 100, "1d")
     # get_account_balance()
-    pprint(get_account_balance())
+    # pprint(get_account_balance())
+    pprint(get_keys(user="VishalNadig"))
+    # print(CONFIG["accounts"]["user"])
     # auto_trader("XVGBTC", "Binance", "Crypto", "1d")
     # parser_activated_bot()
     pass
