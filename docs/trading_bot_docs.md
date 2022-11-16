@@ -8,7 +8,7 @@
 5. Make sure the path of the config file matches the path given by paths.py in paths folder.
 
 # FUNCTIONS
-## get_keys:
+## get_keys(first_name: str = "", last_name: str = "", user: str = "") -> tuple:
     """Get API key and secret key for the specified user. If user is not mentioned then, first name and last name of the user can be used to retrieve the keys.
 
     Args:
@@ -20,7 +20,7 @@
         tuple: The API key and the secret key.
     """
 
-## add_keys:
+## add_keys(first_name: str = "", last_name: str = "", api_key: str = "", secret_key: str = "") -> None:
     """Add API key and the secret key for a new user. If the user already exists. Return exception.
 
     Args:
@@ -30,7 +30,7 @@
     Returns: None
     """
 
-## get_market_data:
+## get_market_data(user: str = "", currency: list = []) -> pd.DataFrame:
     """Get market data and information. We can get the market data and the information of all the currencies or only the specified currencies if they are passed as the argument to this function.
 
     Args:
@@ -42,7 +42,7 @@
     """
 
 
-## place_buy_limit_order:
+## place_buy_limit_order(user: str, market: str, price: float, total_quantity: float) -> None:
 
     Args:
         user (str): Username of the account to place the order in.
@@ -53,7 +53,7 @@
     Returns: None.
     """
 
-## place_sell_limit_order:
+## place_sell_limit_order(user: str, market: str, price: float, total_quantity: float) -> None:
     """Place a buy limit order on the market pair specified.
 
     Args:
@@ -65,7 +65,7 @@
     Returns: None.
     """
 
-## place_market_buy_order:
+## place_market_buy_order(user: str, market: str, total_quantity: float) -> None:
     """Place a buy market order on the market pair specified. The order is placed at the current market price. This order gets executed immediately.
 
     Args:
@@ -76,7 +76,7 @@
     Returns: None.
     """
 
-## place_market_sell_order:
+## place_market_sell_order(user: str, market: str, total_quantity: float) -> None:
     """Place a sell market order on the market pair specified. The order is placed at the current market price. This order gets executed immediately.
 
     Args:
@@ -86,7 +86,7 @@
 
     Returns: None.
     """
-## create_multiple_orders:
+## create_multiple_orders(user: str, orders: list = []) -> None:
     """Create multiple orders at once.
 
     Args:
@@ -195,4 +195,7 @@
     """A CLI to spin up an instance of the bot.
     """
 
+## add_keys_cli() -> None:
+    """Add keys via the interactive terminal.
+    """
 
