@@ -4,7 +4,7 @@
 #  python: python3.9
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+    rev: v4.3.0
     hooks:
       # See https://pre-commit.com/hooks.html for more hooks
       - id: check-ast
@@ -20,20 +20,22 @@ repos:
       - id: pretty-format-json
         args: ["--autofix", "--no-sort-keys"]
   - repo: https://github.com/pycqa/isort
-    rev: 5.8.0
+    rev: 5.10.1
     hooks:
       - id: isort
   - repo: https://github.com/psf/black
-    rev: 21.6b0
+    rev: 22.10.0
     hooks:
       - id: black
+        args:
+          - --line-length=100
   - repo: https://github.com/pycqa/bandit
-    rev: 1.7.0
+    rev: 1.7.4
     hooks:
       - id: bandit
         args: [ "-iii", "-ll" ]
-  - repo: https://gitlab.com/pycqa/flake8
-    rev: 3.9.2
+  - repo: https://github.com/pycqa/flake8
+    rev: 5.0.4
     hooks:
       - id: flake8
         additional_dependencies: [
@@ -43,8 +45,10 @@ repos:
             "flake8-print",
             "flake8-simplify",
         ]
+        args:
+          - --max-line-length=150
   - repo: https://github.com/PabloRMira/sql_formatter
-    rev: master
+    rev: 0.6.2
     hooks:
     - id: sql_formatter
   - repo: local
@@ -52,10 +56,5 @@ repos:
       - id: pylint
         name: pylint
         entry: pylint
-        language: system
-        types: [python]
-      - id: mypy
-        name: mypy
-        entry: mypy
         language: system
         types: [python]
