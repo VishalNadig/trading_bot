@@ -6,14 +6,16 @@ import hmac
 import json
 import logging
 import time
+from datetime import datetime, timedelta
+from pprint import pprint
+
 import pandas as pd
 import requests
 import yaml
-from datetime import datetime, timedelta
-from tradingview_ta import Interval, TA_Handler
-from pprint import pprint
-from paths import paths
+from tradingview_ta import TA_Handler
 
+import constants
+from paths import paths
 
 INITIAL_INVESTMENT = 0.00037751708  # In BTC
 PARSER = argparse.ArgumentParser()
@@ -22,54 +24,13 @@ ORDER_HISTORY_FILE = paths.ORDER_HISTORY_FILE
 LOGFILE = paths.LOGFILE
 TODAY = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
 
-SCREENER_LIST = ["India", "Crypto"]
-API_DICTS = {
-    "coindcx": "https://api.coindcx.com/exchange/ticker",
-    "cryptowatch": "https://api.cryptowat.ch/markets/binance",
-}
-INTERVAL_DICT = {
-    "1m": Interval.INTERVAL_1_MINUTE,
-    "5m": Interval.INTERVAL_5_MINUTES,
-    "15m": Interval.INTERVAL_15_MINUTES,
-    "30m": Interval.INTERVAL_30_MINUTES,
-    "1h": Interval.INTERVAL_1_HOUR,
-    "2h": Interval.INTERVAL_2_HOURS,
-    "4h": Interval.INTERVAL_4_HOURS,
-    "1d": Interval.INTERVAL_1_DAY,
-    "1W": Interval.INTERVAL_1_WEEK,
-    "1M": Interval.INTERVAL_1_MONTH,
-}
+SCREENER_LIST = constants.SCREENER_LIST
+API_DICTS = constants.API_DICTS
+INTERVAL_DICT = constants.INTERVAL_DICT
 
-URL_DICT = {
-    "MARKET_DATA_URL": "https://api.coindcx.com/exchange/ticker",
-    "NEW_ORDER_URL": "https://api.coindcx.com/exchange/v1/orders/create",
-    "CREATE_MULTIPLE_ORDERS_URL": "https://api.coindcx.com/exchange/v1/orders/create_multiple",
-    "ORDER_STATUS_URL": "https://api.coindcx.com/exchange/v1/orders/status",
-    "MULTIPLE_ORDER_STATUS_URL": "https://api.coindcx.com/exchange/v1/orders/status_multiple",
-    "ACTIVE_ORDERS_URL": "https://api.coindcx.com/exchange/v1/orders/active_orders",
-    "ACCOUNT_TRADE_HISTORY_URL": "https://api.coindcx.com/exchange/v1/orders/trade_history",
-    "ACTIVE_ORDERS_COUNT_URL": "https://api.coindcx.com/exchange/v1/orders/active_orders_count",
-    "CANCEL_ALL_ACTIVE_ORDERS_URL": "https://api.coindcx.com/exchange/v1/orders/cancel_all",
-    "CANCEL_MULTIPLE_ACTIVE_ORDERS_BY_IDS_URL": "https://api.coindcx.com/exchange/v1/orders/cancel_by_ids",
-    "CANCEL_ONE_ACTIVE_ORDER_URL": "https://api.coindcx.com/exchange/v1/orders/cancel",
-    "EDIT_PRICE_URL": "https://api.coindcx.com/exchange/v1/orders/edit",
-    "ACCOUNT_BALANCE_URL": "https://api.coindcx.com/exchange/v1/users/balances",
-}
-
-CANDLE_DICT = {"CANDLES_URL": "https://public.coindcx.com/market_data/candles"}
-REMOVE_CURRENCIES = {
-    "INR",
-    "BTC",
-    "BNB",
-    "ETH",
-    "USDC",
-    "BUSD",
-    "TUSD",
-    "TRX",
-    "DAI",
-    "XRP",
-    "INR_insta",
-}
+URL_DICT = constants.URL_DICT
+CANDLE_DICT = constants.CANDLE_DICT
+REMOVE_CURRENCIES = constants.REMOVE_CURRENCIES
 
 # HISTORY_COLS = ["market", "last_price", "quantity", "type", "side", "timestamp", 'order_id']
 # history_file = pd.DataFrame(columns=HISTORY_COLS)
@@ -143,7 +104,7 @@ def add_keys(
         print("Error user already present!")
 
 
-def get_market_data(user: str = "", currency: list = []) -> pd.DataFrame:
+def get_market_data(user: str = "", currency: str = "") -> pd.DataFrame:
     """Get market data and information. We can get the market data and the information of all the currencies or only the specified currencies if they are passed as the argument to this function.
 
     Args:
@@ -169,30 +130,20 @@ def get_market_data(user: str = "", currency: list = []) -> pd.DataFrame:
         "timestamp",
     ]
     df = df[COLS]
-    df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s") + timedelta(
-        hours=5, minutes=30
-    )
+    df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s") + timedelta(hours=5, minutes=30)
     for currencies in REMOVE_CURRENCIES:
         df = df[~df.market.str.endswith(currencies)]
     df = df.reset_index(drop=True)
     df = df.sort_index(ascending=True, axis=0)
     # df.to_csv("market_data.csv", mode="w")
-    if user != "":
-        account_balance = get_account_balance(user=user)
-        for key in account_balance.keys():
-            if key == "INR":
-                account_balance = account_balance.pop(key, "None")
-        print(account_balance)
-    elif currency != "":
+    if currency != "":
         if df["market"].str.contains(currency).any():
             print(df)
     else:
         return df
 
 
-def place_buy_limit_order(
-    user: str, market: str, price: float, total_quantity: float
-) -> None:
+def place_buy_limit_order(user: str, market: str, price: float, total_quantity: float) -> None:
     """Place a buy limit order on the market pair specified.
 
     Args:
@@ -238,9 +189,7 @@ def place_buy_limit_order(
     file.close()
 
 
-def place_sell_limit_order(
-    user: str, market: str, price: float, total_quantity: float
-) -> None:
+def place_sell_limit_order(user: str, market: str, price: float, total_quantity: float) -> None:
     """Place a buy limit order on the market pair specified.
 
     Args:
@@ -303,7 +252,7 @@ def place_market_buy_order(user: str, market: str, total_quantity: float) -> Non
 
     body = {
         "side": "buy",  # Toggle between 'buy' or 'sell'.
-        "order_type": f"market_order",  # Toggle between a 'market_order' or 'limit_order'.
+        "order_type": "market_order",  # Toggle between a 'market_order' or 'limit_order'.
         "market": f"{market}",  # Replace 'SNTBTC' with your desired market pair.
         "total_quantity": total_quantity,  # Replace this with the quantity you want
         "timestamp": time_stamp,
@@ -454,9 +403,7 @@ def get_active_orders(user: str) -> dict:
         "X-AUTH-APIKEY": get_keys(user=user)[0],
         "X-AUTH-SIGNATURE": signature,
     }
-    response = requests.post(
-        URL_DICT["ACTIVE_ORDERS_URL"], data=json_body, headers=headers
-    )
+    response = requests.post(URL_DICT["ACTIVE_ORDERS_URL"], data=json_body, headers=headers)
     data = response.json()
     return data
 
@@ -482,9 +429,7 @@ def account_trade_history(user: str) -> dict:
         "X-AUTH-APIKEY": get_keys(user=user)[0],
         "X-AUTH-SIGNATURE": signature,
     }
-    response = requests.post(
-        URL_DICT["ACCOUNT_TRADE_HISTORY_URL"], data=json_body, headers=headers
-    )
+    response = requests.post(URL_DICT["ACCOUNT_TRADE_HISTORY_URL"], data=json_body, headers=headers)
     data = response.json()
     print(data)
     return data
@@ -599,16 +544,12 @@ def edit_price_of_orders(user: str, ids, price: float) -> None:
         "X-AUTH-APIKEY": get_keys(user=user)[0],
         "X-AUTH-SIGNATURE": signature,
     }
-    response = requests.post(
-        URL_DICT["EDIT_PRICE_URL"], data=json_body, headers=headers
-    )
+    response = requests.post(URL_DICT["EDIT_PRICE_URL"], data=json_body, headers=headers)
     data = response.json()
     print(data)
 
 
-def bot_trader(
-    user: str, symbol: str, market: str, screener_name: str, interval: str
-) -> None:
+def bot_trader(user: str, symbol: str, market: str, screener_name: str, interval: str) -> None:
     """Execute trades automatically 24/7 based on input parameters
 
     Args:
@@ -684,20 +625,14 @@ def bot_trader(
         df = pd.DataFrame.from_dict(data)
         df = df.sort_values("market")
         # df = df[COLS]
-        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s") + timedelta(
-            hours=5, minutes=30
-        )
+        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s") + timedelta(hours=5, minutes=30)
         for currency in REMOVE_CURRENCIES:
             df = df[~df.market.str.endswith(currency)]
         df = df.reset_index(drop=True)
         df = df.sort_index(ascending=True, axis=0)
         current_price = df.iloc[506]["last_price"]
         # SET BUY PRICE, SELL PRICE AND STOP LOSS CONDITIONS
-        if (
-            current_price < pivot
-            and current_price > supports[0]
-            and current_price < close_price
-        ):
+        if current_price < pivot and current_price > supports[0] and current_price < close_price:
             buy_price = supports[0]
             stop_loss = supports[0] - int(0.01 * buy_price)
             sell_price = pivot
@@ -721,9 +656,7 @@ def bot_trader(
             pass
         order_size = 0.33 * account_balance
         if (  # BUY CONDITIONS
-            float(current_price) == buy_price
-            and not open_position
-            and order_size > min_order_value
+            float(current_price) == buy_price and not open_position and order_size > min_order_value
         ) or (rsi < 37 and not open_position and order_size > min_order_value):
             place_buy_limit_order(
                 user=user, market=market, price=buy_price, total_quantity=order_size
@@ -769,9 +702,7 @@ def get_account_balance(user: str = "VishalNadig") -> dict:
         "X-AUTH-SIGNATURE": signature,
     }
 
-    response = requests.post(
-        URL_DICT["ACCOUNT_BALANCE_URL"], data=json_body, headers=headers
-    )
+    response = requests.post(URL_DICT["ACCOUNT_BALANCE_URL"], data=json_body, headers=headers)
     data = response.json()
     dataframe = {}
     # dataframe.to_csv("account_balance.csv")
@@ -791,14 +722,18 @@ def get_account_balance(user: str = "VishalNadig") -> dict:
 
 
 def get_candles(
-    market: str, coin1: str, coin2: str, limit: int = 100, interval: str = "4h"
+    market: str = "B",
+    coin_1: str = "BTC",
+    coin_2: str = "USDT",
+    limit: int = 100,
+    interval: str = "4h",
 ) -> pd.DataFrame:
     """Get historical candle data of a cryptocurrency for price prediction and analysis.
 
     Args:
         market (str): B- Binance, I- CoinDCX, HB- HitBTC, H- Huobi, BM- BitMex.
-        coin1 (str): Symbol of coin1 (BTC, XRP, SHIB, DOGE, ADA)
-        coin2 (str): Symbol of coin2 (BTC, USDT).
+        coin_1 (str): Symbol of coin_1 (BTC, XRP, SHIB, DOGE, ADA)
+        coin_2 (str): Symbol of coin_2 (BTC, USDT).
         limit (int, optional): maximum 1000 candles.
         interval (str, optional): [1m   5m  15m 30m 1h  2h  4h  6h  8h  1d  3d  1w  1M] m -> minutes, h -> hours, d -> days, w -> weeks, M -> months. Defaults to "4h".
 
@@ -807,17 +742,18 @@ def get_candles(
     """
     url = (
         CANDLE_DICT["CANDLES_URL"]
-        + f"?pair={market}-{coin1}_{coin2}&interval={interval}&limit={limit}"
+        + f"?pair={market}-{coin_1}_{coin_2}&interval={interval}&limit={limit}"
     )
     response = requests.get(url)
     data = response.json()
+    print(data)
     dataframe = pd.DataFrame.from_dict(data)
     dataframe["time"] = pd.to_datetime(dataframe["time"], unit="ms")
     dataframe.to_csv(
-        r"/Users/akshathanadig/Downloads/Education/Computer Science/Python/Trading Bot/Analysis_data/candle_data.csv",
+        rf"/Users/akshathanadig/Downloads/git/trading_bot/strategy_testing/historical_data/{coin_1}_{coin_2}_candle_data.csv",
         mode="w",
     )
-    print(dataframe)
+    # print(dataframe)
     return dataframe
 
 
@@ -861,7 +797,6 @@ def auto_trader(user: str):
                 print(coins)
 
 
-
 def parser_activated_bot() -> None:
     """A CLI to spin up an instance of the bot."""
     PARSER.add_argument(
@@ -871,9 +806,7 @@ def parser_activated_bot() -> None:
         help="Username of the account to place the trade",
         type=str,
     )
-    PARSER.add_argument(
-        "-s", "--symbol", help="The symbol of the stock to trade", required=True
-    )
+    PARSER.add_argument("-s", "--symbol", help="The symbol of the stock to trade", required=True)
     PARSER.add_argument("-m", "--market", help="The market to trade", required=True)
     PARSER.add_argument("-S", "--Screener", help="Name of screener", required=True)
     PARSER.add_argument(
@@ -903,5 +836,6 @@ if __name__ == "__main__":
     # print(CONFIG["accounts"]["user"])
     # bot_trader("XVGBTC", "Binance", "Crypto", "1d")
     # parser_activated_bot()
-    auto_trader("vishalnadig")
+    # auto_trader("vishalnadig")
+    # print(get_candles("B", "NEAR", "BTC"))
     pass
