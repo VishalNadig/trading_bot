@@ -4,7 +4,7 @@ from paths import paths
 
 PARSER = argparse.ArgumentParser()
 LOGFILE = paths.LOGFILE
-CONFIG_FILE = r"/Users/akshathanadig/Downloads/git/trading_bot/megamind_config.yaml"
+CONFIG_FILE = paths.CONFIG_FILE
 with open(CONFIG_FILE) as file:
     CONFIG = yaml.safe_load(file)
 
