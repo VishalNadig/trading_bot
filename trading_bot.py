@@ -6,18 +6,17 @@ import hmac
 import json
 import logging
 import time
-from datetime import datetime, timedelta
-from pprint import pprint
-
 import pandas as pd
 import requests
 import yaml
-from tradingview_ta import TA_Handler
-
 import constants
+from matplotlib import pyplot
+from datetime import datetime, timedelta
+from pprint import pprint
+from tradingview_ta import TA_Handler
 from paths import paths
 
-INITIAL_INVESTMENT = 0.00037751708  # In BTC
+INITIAL_INVESTMENT = constants.INITIAL_INVESTMENT  # In BTC
 PARSER = argparse.ArgumentParser()
 CONFIG_FILE = paths.CONFIG_FILE
 ORDER_HISTORY_FILE = paths.ORDER_HISTORY_FILE
@@ -617,7 +616,7 @@ def bot_trader(user: str, symbol: str, market: str, screener_name: str, interval
             indicator_data_["Pivot.M.Fibonacci.S2"],
             indicator_data_["Pivot.M.Fibonacci.S3"],
         ]
-        resistances = [
+        resistances = [ 
             indicator_data_["Pivot.M.Fibonacci.R1"],
             indicator_data_["Pivot.M.Fibonacci.R2"],
             indicator_data_["Pivot.M.Fibonacci.R3"],
@@ -824,6 +823,11 @@ def parser_activated_bot() -> None:
         interval=args.interval,
     )
 
+
+def plot_historical_data(coin_1: str = "BTC", coin_2: str = "USDT", interval: str = "1d", limit: int = 100):
+    candle_data = get_candles(coin_1=coin_1, coin_2=coin_2, interval=interval, limit=limit)
+    candle_data.plot(x="time", y = ["close"], kind = "line", figsize=(10,10), xlabel="Time", ylabel=f"{coin_1}{coin_2} close price")
+    pyplot.show()
 
 if __name__ == "__main__":
     # pprint(get_market_data(user="vishal nadig"))
