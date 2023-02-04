@@ -1,4 +1,4 @@
-from tradingview_ta import Interval, TA_Handler
+from tradingview_ta import Interval
 
 INITIAL_INVESTMENT = 0.00037751708
 SCREENER_LIST = ["India", "Crypto"]
@@ -33,12 +33,13 @@ URL_DICT = {
     "CANCEL_ONE_ACTIVE_ORDER_URL": "https://api.coindcx.com/exchange/v1/orders/cancel",
     "EDIT_PRICE_URL": "https://api.coindcx.com/exchange/v1/orders/edit",
     "ACCOUNT_BALANCE_URL": "https://api.coindcx.com/exchange/v1/users/balances",
+    "CANDLES_URL": "https://public.coindcx.com/market_data/candles",
+    "MARKET_DETAILS_URL": "https://api.coindcx.com/exchange/v1/markets_details",
+    "TICKER_URL": "https://public.coindcx.com/exchange/ticker"
 }
 
-CANDLE_DICT = {"CANDLES_URL": "https://public.coindcx.com/market_data/candles"}
 REMOVE_CURRENCIES = {
     "INR",
-    "BTC",
     "BNB",
     "ETH",
     "USDC",
@@ -49,3 +50,4 @@ REMOVE_CURRENCIES = {
     "XRP",
     "INR_insta",
 }
+MARKETS = ("Binance", "Huobi", "CoinDCX", )
