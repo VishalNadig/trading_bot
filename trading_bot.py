@@ -736,21 +736,9 @@ def get_account_balance(user: str = "VishalNadigOfficial") -> dict:
         URL_DICT["ACCOUNT_BALANCE_URL"], data=json_body, headers=headers, timeout=60
     )
     json_data = response.json()
-    print(json_data)
     dataframe = pd.DataFrame(json_data)
     # dataframe.to_csv("account_balance.csv")
-    account_balance = dataframe["balance"]
-    for data in json_data:
-        if (
-            float(data["balance"]) > 0.1
-            or float(data["locked_balance"]) > 0.1
-            or "BTC" in data["currency"]
-        ):
-            dataframe[data["currency"]] = {
-                "Balance": data["balance"],
-                "Locked Balance": data["locked_balance"],
-            }
-    dataframe = dataframe[dataframe['balance'] != 0.0]
+    dataframe = dataframe[dataframe['balance'] != '0.0']
     return dataframe
 
 
@@ -899,5 +887,6 @@ def price_tracker(coin_1: str = "BTC", coin_2: str = "USDT", price: float = 0.0)
 
 if __name__ == "__main__":
     # print(get_ticker(coin_1="VET"))
-    price_tracker(coin_1 = "VET", price=0.024)
+    # price_tracker(coin_1 = "VET", price=0.024)
+    print(get_account_balance())
     # print(get_candles())

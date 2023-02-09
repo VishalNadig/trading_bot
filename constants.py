@@ -35,7 +35,8 @@ URL_DICT = {
     "ACCOUNT_BALANCE_URL": "https://api.coindcx.com/exchange/v1/users/balances",
     "CANDLES_URL": "https://public.coindcx.com/market_data/candles",
     "MARKET_DETAILS_URL": "https://api.coindcx.com/exchange/v1/markets_details",
-    "TICKER_URL": "https://public.coindcx.com/exchange/ticker"
+    "TICKER_URL": "https://public.coindcx.com/exchange/ticker",
+    "USER_INFO": "https://public.coindcx.com/exchange/v1/users/info"
 }
 
 REMOVE_CURRENCIES = {
