@@ -7,7 +7,7 @@ import json
 import logging
 import time
 from datetime import datetime, timedelta
-
+import smtplib
 import pandas as pd
 import requests
 import yaml
@@ -41,6 +41,7 @@ logging.basicConfig(
     filename=paths.LOGFILE,
     format="%(asctime)s;%(levelname)s;%(message)s",
 )
+
 
 with open(CONFIG_FILE, "r+", encoding="utf-8") as file:
     CONFIG = yaml.safe_load(file)
@@ -104,64 +105,57 @@ def add_keys(
         return {404: "Error user already present!"}
 
 
-def get_ticker(coin_1: str = "BTC", coin_2: str = "USDT"):
+def get_ticker(coin_1: str = "BTC", coin_2: str = "USDT", coins_list: list = []) -> dict:
+    """Get the ticker details of the coin
+
+    Args:
+        coin_1 (str, optional): The coin to get the ticker details of. Defaults to "BTC".
+        coin_2 (str, optional): The coin against which to get the ticker details of. Defaults to "USDT".
+
+    Returns:
+        dict: The dictionary of the coins details
+    """
     url = "https://api.coindcx.com/exchange/ticker"
     response = requests.get(url)
     data = response.json()
-    for coins in data:
-        if coins['market'] == coin_1+coin_2:
-            return coins
+    coins_dictionary = {}
+    if len(coins_list) == 0:
+        for coins in data:
+            if coins['market'] == coin_1+coin_2:
+                return coins
+    else:
+        for coin in coins_list:
+            for coins in data:
+                if coins['symbol'] == coin+"USDT":
+                    coins_dictionary[coins['symbol']] = coins
+        return coins_dictionary
 
 
+def get_markets_details(coin_1: str = "BTC", coin_2: str = "USDT", coins_list: list = []) -> dict:
+    """Get the market details of the coins listed on the exchange. This includes the max leverage of the coin, the market it trades in, the min quantity to place an order, the max quantity to place an order.
 
-def get_markets_details(coin_1: str = "BTC", coin_2: str = "USDT") -> dict:
+    Args:
+        coin_1 (str, optional): The coin to check the price for. Defaults to "BTC".
+        coin_2 (str, optional): The coin to check the price against. Defaults to "USDT".
+        coins_list (list, optional): If you want the details of multiple coins then pass all the coins as a list to this argument. Defaults to [].
+
+    Returns:
+        dict: The dictionary of the market details of the coins.
+    """
     url = URL_DICT["MARKET_DETAILS_URL"]
     response = requests.get(url)
     data = response.json()
-    for coins in data:
-        if coins['symbol'] == coin_1+coin_2:
-            return coins
-
-
-def get_market_data(currency: str = "") -> pd.DataFrame:
-    """Get market data and information. We can get the market data and the information of all the currencies or only the specified currencies if they are passed as the argument to this function.
-
-    Args:
-        user (str, optional): _description_. Defaults to "".
-        currency (str, optional): _description_. Defaults to "".
-
-    Returns:
-        pd.DataFrame: _description_
-    """
-    # TODO: Add the currency list to get the info about the specified currencies only.
-    data = requests.get(URL_DICT["MARKET_DATA_URL"], timeout=60).json()
-    data_frame = pd.DataFrame.from_dict(data)
-    data_frame = data_frame.sort_values("market")
-    columns = data_frame.columns.tolist()
-    columns = [
-        "market",
-        "last_price",
-        "bid",
-        "ask",
-        "volume",
-        "high",
-        "low",
-        "timestamp",
-    ]
-    data_frame = data_frame[columns]
-    data_frame["timestamp"] = pd.to_datetime(data_frame["timestamp"], unit="s") + timedelta(
-        hours=5, minutes=30
-    )
-    for currencies in REMOVE_CURRENCIES:
-        data_frame = data_frame[~data_frame.market.str.endswith(currencies)]
-    data_frame = data_frame.reset_index(drop=True)
-    data_frame = data_frame.sort_index(ascending=True, axis=0)
-    # data_frame.to_csv("market_data.csv", mode="w")
-    if currency != "":
-        if data_frame["market"].str.contains(currency).any():
-            print(data_frame)
+    coins_dictionary  = {}
+    if len(coins_list) == 0:
+        for coins in data:
+            if coins['symbol'] == coin_1+coin_2:
+                return coins
     else:
-        return data_frame
+        for coin in coins_list:
+            for coins in data:
+                if coins['symbol'] == coin+"USDT":
+                    coins_dictionary[coins['symbol']] = coins
+        return coins_dictionary
 
 
 def place_buy_limit_order(user: str = "vishalnadigofficial", coin_1: str = "BTC", coin_2: str = "USDT", price: float = 0.023, total_quantity: float = 450) -> None:
@@ -278,7 +272,7 @@ def place_market_buy_order(user: str = "VishalNadigOfficial", coin_1: str = "BTC
         "side": "buy",  # Toggle between 'buy' or 'sell'.
         "order_type": "market_order",  # Toggle between a 'market_order' or 'limit_order'.
         "market": f"{coin_1+coin_2}",  # Replace 'SNTBTC' with your desired market pair.
-        "total_quantity": total_quantity,  # Replace this with the quantity you want
+        "total_quantity": 450,  # Replace this with the quantity you want
         "timestamp": time_stamp,
     }
     json_body = json.dumps(body, separators=(",", ":"))
@@ -292,11 +286,13 @@ def place_market_buy_order(user: str = "VishalNadigOfficial", coin_1: str = "BTC
     }
     response = requests.post(URL_DICT["NEW_ORDER_URL"], data=json_body, headers=headers)
     data = response.json()
-    print(data)
-    # logging.info(data)
-    with open(ORDER_HISTORY_FILE, "a", newline="") as file:
-        csvwrite = csv.writer(file, dialect="excel")
-        csvwrite.writerow(
+    if data['status'] == 'error':
+        logging.info(data)
+        return {404: data}
+    else:
+        with open(ORDER_HISTORY_FILE, "a", newline="") as file:
+            csvwrite = csv.writer(file, dialect="excel")
+            csvwrite.writerow(
             [
                 "",
                 coin_1+coin_2,
@@ -306,8 +302,7 @@ def place_market_buy_order(user: str = "VishalNadigOfficial", coin_1: str = "BTC
                 TODAY,
             ]
         )
-    print("Written to file")
-    file.close()
+            logging.info("Written to file")
 
 
 def place_market_sell_order(user: str = "vishalnadigofficial", coin_1: str = "BTC", coin_2: str = "USDT", total_quantity: float = 450.0) -> None:
@@ -342,6 +337,7 @@ def place_market_sell_order(user: str = "vishalnadigofficial", coin_1: str = "BT
     response = requests.post(URL_DICT["NEW_ORDER_URL"], data=json_body, headers=headers)
     data = response.json()
     logging.info(data)
+    print(data)
     with open(ORDER_HISTORY_FILE, "a", newline="", encoding="utf-8") as file:
         csvwrite = csv.writer(file, dialect="excel")
         csvwrite.writerow(
@@ -664,8 +660,7 @@ def bot_trader(user: str = "VishalNadigOfficial", coin_1: str = "BTC", coin_2: s
         #     data_frame = data_frame[~data_frame.market.str.endswith(currency)]
         # data_frame = data_frame.reset_index(drop=True)
         # data_frame = data_frame.sort_index(ascending=True, axis=0)
-        current_price = data["close"]
-        print(current_price)
+        current_price = get_ticker(coin_1=coin_1,coin_2=coin_2)['last_price']
         # SET BUY PRICE, SELL PRICE AND STOP LOSS CONDITIONS
         # if current_price < pivot and current_price > supports[0] and current_price < close_price:
         #     buy_price = supports[0]
@@ -741,6 +736,7 @@ def get_account_balance(user: str = "VishalNadigOfficial") -> dict:
         URL_DICT["ACCOUNT_BALANCE_URL"], data=json_body, headers=headers, timeout=60
     )
     json_data = response.json()
+    print(json_data)
     dataframe = pd.DataFrame(json_data)
     # dataframe.to_csv("account_balance.csv")
     account_balance = dataframe["balance"]
@@ -782,6 +778,7 @@ def get_candles(
     response = requests.get(url, timeout=60)
     data = response.json()
     dataframe = pd.DataFrame.from_dict(data)
+    # current_time = datetime.datetime.fromtimestamp(unix_timestamp)
     dataframe["time"] = pd.to_datetime(dataframe["time"], unit="ms")
     return dataframe
 
@@ -861,7 +858,7 @@ def parser_activated_bot() -> None:
 
 def plot_historical_data(
     coin_1: str = "BTC", coin_2: str = "USDT", interval: str = "1d", limit: int = 100
-):
+) -> pyplot:
     """Plot the historical price of any cryptocurreny to perform technical and fundamental analysis
 
     Args:
@@ -882,23 +879,25 @@ def plot_historical_data(
     pyplot.show()
 
 
+def send_mail(message: str) -> None:
+    smtp_object = smtplib.SMTP('smtp.gmail.com', 587)
+    smtp_object.starttls()
+    smtp_object.login(CONFIG['trading']['gmail_creds']['username'], CONFIG["trading"]["gmail_creds"]["password"])
+    smtp_object.sendmail(CONFIG['trading']['gmail_creds']['username'], "nadigvishal@gmail.com", message)
+    smtp_object.quit()
+
+
+def price_tracker(coin_1: str = "BTC", coin_2: str = "USDT", price: float = 0.0) -> None:
+    coin_details = get_ticker(coin_1=coin_1, coin_2=coin_2)
+    print(coin_details)
+    time_stamp = datetime.fromtimestamp(coin_details['timestamp'])
+    if price != 0.0:
+        if float(coin_details["last_price"]) > price:
+            message = f"Price of {coin_details['market']} is more than {price} trading at {coin_details['last_price']}"# and is currently trading at {str(time_stamp)}"
+            send_mail(message=message)
+
+
 if __name__ == "__main__":
-    # pprint(get_market_data(user="vishal nadig"))
-    # place_sell_limit_order()
-    # place_market_buy_order(user="vishalnadigofficial",coin_1="XTM", coin_2="USDT",total_quantity=425)
-    # place_market_sell_order()
-    # print(get_account_balance())
-    # print(get_keys(user="VishalNadigOfficial"))
-    # bot_trader(coin_1="PYR")
-    # print(CONFIG["accounts"]["user"])
-    # bot_trader("XVGBTC", "Binance", "Crypto", "1d")
-    # parser_activated_bot()
-    # print(get_keys(user = "Vishal NADIGOFFICIAL"))
-    # auto_trader("vishalnadig")
-    # place_buy_limit_order(coin_1="XTM")
-    # add_keys(first_name="Anjana", last_name="Nadig", api_key="KHSDADASWW", secret_key="ASDASDASDA", email="anjannadig@gmail.com", google_auth_key="KSJAWDASFAS")
-    # print(get_account_balance())
-    # place_market_sell_order(user="vishalnadig",coin_1="PYR",total_quantity=12.0)
-    # print(get_markets_details(coin_1="PYR"))
-    print(get_ticker(coin_1="PYR"))
-    # print(get_candles(coin_1="PYR",interval="1m"))
+    # print(get_ticker(coin_1="VET"))
+    price_tracker(coin_1 = "VET", price=0.024)
+    # print(get_candles())
