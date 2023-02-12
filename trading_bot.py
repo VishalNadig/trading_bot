@@ -878,6 +878,11 @@ def plot_historical_data(
 
 
 def send_mail(message: str) -> None:
+    """Send mail function to send a mail and deliver the message.
+
+    Args:
+        message (str): The message to be sent through the mail.
+    """
     smtp_object = smtplib.SMTP('smtp.gmail.com', 587)
     smtp_object.starttls()
     smtp_object.login(CONFIG['trading']['gmail_creds']['username'], CONFIG["trading"]["gmail_creds"]["password"])
@@ -885,14 +890,23 @@ def send_mail(message: str) -> None:
     smtp_object.quit()
 
 
-def price_tracker(coin_1: str = "BTC", coin_2: str = "USDT", price: float = 0.0) -> None:
+def price_tracker(coin_1: str = "BTC", coin_2: str = "USDT", price: float = 0.0, mail: bool = False) -> None:
+    """Get the current price of the coin_1 and send a mail
+
+    Args:
+        coin_1 (str, optional): The price of the coin you want to check. Defaults to "BTC".
+        coin_2 (str, optional): The coin you want to check the price against. Defaults to "USDT".
+        price (float, optional): The price above which if the price of coin_1 reaches you want to send the mail. Defaults to 0.0.
+        mail (boolm optional): Set to True to send mail of the price. Defaults to False.
+    """
     coin_details = get_ticker(coin_1=coin_1, coin_2=coin_2)
     print(coin_details)
     time_stamp = datetime.fromtimestamp(coin_details['timestamp'])
     if price != 0.0:
         if float(coin_details["last_price"]) > price:
             message = f"Price of {coin_details['market']} is more than {price} trading at {coin_details['last_price']}"# and is currently trading at {str(time_stamp)}"
-            send_mail(message=message)
+            if mail:
+                send_mail(message=message)
 
 
 if __name__ == "__main__":
