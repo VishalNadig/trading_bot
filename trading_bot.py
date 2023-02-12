@@ -737,8 +737,18 @@ def get_account_balance(user: str = "VishalNadigOfficial") -> dict:
     )
     json_data = response.json()
     dataframe = pd.DataFrame(json_data)
+    price_list = []
     # dataframe.to_csv("account_balance.csv")
     dataframe = dataframe[dataframe['balance'] != '0.0']
+    for coin in dataframe["currency"]:
+        if coin == "USDT":
+            details = get_ticker(coin_1=coin, coin_2="INR")
+            price_list.append(details['last_price'])
+        details = get_ticker(coin_1=coin)
+        if details != None:
+            price_list.append(details['last_price'])
+    dataframe['current_price'] = price_list
+    dataframe['timestamp'] = datetime.fromtimestamp(time_stamp/1000)
     return dataframe
 
 
