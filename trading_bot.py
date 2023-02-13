@@ -158,7 +158,7 @@ def get_markets_details(coin_1: str = "BTC", coin_2: str = "USDT", coins_list: l
         return coins_dictionary
 
 
-def place_buy_limit_order(user: str = "vishalnadigofficial", coin_1: str = "BTC", coin_2: str = "USDT", price: float = 0.023, total_quantity: float = 450) -> None:
+def place_buy_limit_order(user: str = CONFIG['Owner']['alt_username'], coin_1: str = "BTC", coin_2: str = "USDT", price: float = 0.023, total_quantity: float = 450) -> None:
     """Place a buy limit order on the market pair specified.
 
     Args:
@@ -205,7 +205,7 @@ def place_buy_limit_order(user: str = "vishalnadigofficial", coin_1: str = "BTC"
     file.close()
 
 
-def place_sell_limit_order(user: str = "vishalnadigofficial", coin_1: str = "BTC", coin_2: str = "USDT", price: float = 0.25, total_quantity: float = 450.0) -> None:
+def place_sell_limit_order(user: str = CONFIG['Owner']['alt_username'], coin_1: str = "BTC", coin_2: str = "USDT", price: float = 0.25, total_quantity: float = 450.0) -> None:
     """Place a buy limit order on the market pair specified.
 
     Args:
@@ -256,7 +256,7 @@ def place_sell_limit_order(user: str = "vishalnadigofficial", coin_1: str = "BTC
     file.close()
 
 
-def place_market_buy_order(user: str = "VishalNadigOfficial", coin_1: str = "BTC", coin_2: str = "USDT", total_quantity: float = 450) -> None:
+def place_market_buy_order(user: str = CONFIG['Owner']['alt_username'], coin_1: str = "BTC", coin_2: str = "USDT", total_quantity: float = 450) -> None:
     """Place a buy market order on the market pair specified. The order is placed at the current market price. This order gets executed immediately.
 
     Args:
@@ -305,7 +305,7 @@ def place_market_buy_order(user: str = "VishalNadigOfficial", coin_1: str = "BTC
             logging.info("Written to file")
 
 
-def place_market_sell_order(user: str = "vishalnadigofficial", coin_1: str = "BTC", coin_2: str = "USDT", total_quantity: float = 450.0) -> None:
+def place_market_sell_order(user: str = CONFIG['Owner']['alt_username'], coin_1: str = "BTC", coin_2: str = "USDT", total_quantity: float = 450.0) -> None:
     """Place a sell market order on the market pair specified. The order is placed at the current market price. This order gets executed immediately.
 
     Args:
@@ -354,7 +354,7 @@ def place_market_sell_order(user: str = "vishalnadigofficial", coin_1: str = "BT
     file.close()
 
 
-def create_multiple_orders(user: str = "vishalnadigofficial", orders: list = []) -> None:
+def create_multiple_orders(user: str = CONFIG['Owner']['alt_username'], orders: list = []) -> None:
     """Create multiple orders at once.
 
     Args:
@@ -403,7 +403,7 @@ def create_multiple_orders(user: str = "vishalnadigofficial", orders: list = [])
     print(data)
 
 
-def get_active_orders(user: str = "vishalnadigofficial") -> dict:
+def get_active_orders(user: str = CONFIG['Owner']['alt_username']) -> dict:
     """Get the current buy or sell active orders for the user.
 
     Args:
@@ -433,7 +433,7 @@ def get_active_orders(user: str = "vishalnadigofficial") -> dict:
     return data
 
 
-def account_trade_history(user: str = "vishalnadigofficial") -> dict:
+def account_trade_history(user: str = CONFIG['Owner']['alt_username']) -> dict:
     """Get the account trade history of the user.
 
     Args:
@@ -462,7 +462,7 @@ def account_trade_history(user: str = "vishalnadigofficial") -> dict:
     return data
 
 
-def cancel_order(user: str = "vishalnadigofficial", ids: str = "") -> None:
+def cancel_order(user: str = CONFIG['Owner']['alt_username'], ids: str = "") -> None:
     """Cancel a particular order of the user.
 
     Args:
@@ -487,7 +487,7 @@ def cancel_order(user: str = "vishalnadigofficial", ids: str = "") -> None:
     print(data)
 
 
-def cancel_all_orders(user: str = "vishalnadigofficial") -> None:
+def cancel_all_orders(user: str = CONFIG['Owner']['alt_username']) -> None:
     """Cancel all the active orders of the user.
 
     Args:
@@ -515,7 +515,7 @@ def cancel_all_orders(user: str = "vishalnadigofficial") -> None:
     print(data)
 
 
-def cancel_multiple_by_ids(user: str = "vishalnadigofficial", ids: list = []) -> None:
+def cancel_multiple_by_ids(user: str = CONFIG['Owner']['alt_username'], ids: list = []) -> None:
     """Cancel multiple orders given by the list of ids for a particular user.
 
     Args:
@@ -545,7 +545,7 @@ def cancel_multiple_by_ids(user: str = "vishalnadigofficial", ids: list = []) ->
     print(data)
 
 
-def edit_price_of_orders(user: str = "vishalnadigofficial", ids: list = [], price: float = "") -> None:
+def edit_price_of_orders(user: str = CONFIG['Owner']['alt_username'], ids: list = [], price: float = "") -> None:
     """Edit the buy or sell price of the orders.
 
     Args:
@@ -575,7 +575,7 @@ def edit_price_of_orders(user: str = "vishalnadigofficial", ids: list = [], pric
     print(data)
 
 
-def bot_trader(user: str = "VishalNadigOfficial", coin_1: str = "BTC", coin_2: str = "USDT", market: str = "Binance", screener_name: str = "Crypto", interval: str = "4h") -> None:
+def bot_trader(user: str = CONFIG['Owner']['alt_username'], coin_1: str = "BTC", coin_2: str = "USDT", market: str = "Binance", screener_name: str = "Crypto", interval: str = "4h") -> None:
     """Execute trades automatically 24/7 based on input parameters
 
     Args:
@@ -711,11 +711,11 @@ def bot_trader(user: str = "VishalNadigOfficial", coin_1: str = "BTC", coin_2: s
         #     logging.info(f"made {profit}% profits!")
 
 
-def get_account_balance(user: str = "VishalNadigOfficial") -> dict:
+def get_account_balance(user: str = CONFIG['Owner']['alt_username']) -> dict:
     """Get the account balance of the user.
 
     Args:
-        user (str, optional): The username of the account to get the balance of. Defaults to "VishalNadigOfficial".
+        user (str, optional): The username of the account to get the balance of. Defaults to CONFIG['Owner']['alt_username'].
 
     Returns:
         dict: The dictionary of the account balances of all the currencies.
@@ -805,7 +805,7 @@ def indicator_data(
     return trading_pair.get_analysis().indicators
 
 
-def auto_trader(user: str = "vishalnadigofficial"):
+def auto_trader(user: str = CONFIG['Owner']['alt_username']):
     """Spin up an auto trading bot to trade for a particular user.
 
     Args:
@@ -864,6 +864,9 @@ def plot_historical_data(
         coin_2 (str, optional): Ticker symbol of the comparison crypto. Defaults to "USDT".
         interval (str, optional): Time interval to get the price of the crypto. Defaults to "1d".
         limit (int, optional): The number of candles to fetch. Max limit = 1000. Defaults to 100.
+
+    Returns:
+        pyplot: Plot of the data
     """
     candle_data = get_candles(coin_1=coin_1, coin_2=coin_2, interval=interval, limit=limit)
     candle_data.plot(
@@ -877,7 +880,7 @@ def plot_historical_data(
     pyplot.show()
 
 
-def send_mail(message: str) -> None:
+def send_mail(message: str, receiver: str =CONFIG['Owner']['alt_username']) -> None:
     """Send mail function to send a mail and deliver the message.
 
     Args:
@@ -886,31 +889,34 @@ def send_mail(message: str) -> None:
     smtp_object = smtplib.SMTP('smtp.gmail.com', 587)
     smtp_object.starttls()
     smtp_object.login(CONFIG['trading']['gmail_creds']['username'], CONFIG["trading"]["gmail_creds"]["password"])
-    smtp_object.sendmail(CONFIG['trading']['gmail_creds']['username'], "nadigvishal@gmail.com", message)
+    smtp_object.sendmail(CONFIG['trading']['gmail_creds']['username'], receiver, message)
     smtp_object.quit()
 
 
-def price_tracker(coin_1: str = "BTC", coin_2: str = "USDT", price: float = 0.0, mail: bool = False) -> None:
+def price_tracker(coin_1: str = "BTC", coin_2: str = "USDT", price: float = 0.0, mail: bool = False, receiver: str =CONFIG['Owner']['alt_username']) -> str:
     """Get the current price of the coin_1 and send a mail
 
     Args:
         coin_1 (str, optional): The price of the coin you want to check. Defaults to "BTC".
         coin_2 (str, optional): The coin you want to check the price against. Defaults to "USDT".
         price (float, optional): The price above which if the price of coin_1 reaches you want to send the mail. Defaults to 0.0.
-        mail (boolm optional): Set to True to send mail of the price. Defaults to False.
+        mail (bool optional): Set to True to send mail of the price. Defaults to False.
+        receiver (str, optional): The recipient of the mail. Must be a valid gmail ID. Defaults to
     """
     coin_details = get_ticker(coin_1=coin_1, coin_2=coin_2)
     print(coin_details)
-    time_stamp = datetime.fromtimestamp(coin_details['timestamp'])
     if price != 0.0:
         if float(coin_details["last_price"]) > price:
-            message = f"Price of {coin_details['market']} is more than {price} trading at {coin_details['last_price']}"# and is currently trading at {str(time_stamp)}"
+            message = f"Price of {coin_details['market']} is more than {price} trading at {coin_details['last_price']}"
             if mail:
-                send_mail(message=message)
+                send_mail(message=message, receiver=receiver)
+                return message
+            else:
+                return message
 
 
 if __name__ == "__main__":
     # print(get_ticker(coin_1="VET"))
-    # price_tracker(coin_1 = "VET", price=0.024)
+    # price_tracker(coin_1 = "VET", price=0.023)
     print(get_account_balance())
     # print(get_candles())

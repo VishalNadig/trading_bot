@@ -198,3 +198,33 @@
 ## add_keys_cli() -> None:
     """Add keys via the interactive terminal.
     """
+
+## plot_historical_data(coin_1: str = "BTC", coin_2: str = "USDT", interval: str = "1d", limit: int = 100) -> pyplot:
+    """Plot the historical price of any cryptocurreny to perform technical and fundamental analysis
+
+    Args:
+        coin_1 (str, optional): Ticker symbol of the crypto. Defaults to "BTC".
+        coin_2 (str, optional): Ticker symbol of the comparison crypto. Defaults to "USDT".
+        interval (str, optional): Time interval to get the price of the crypto. Defaults to "1d".
+        limit (int, optional): The number of candles to fetch. Max limit = 1000. Defaults to 100.
+
+    Returns:
+        pyplot: Plot of the data
+    """
+
+## send_mail(message: str) -> None:
+    """Send mail function to send a mail and deliver the message.
+
+    Args:
+        message (str): The message to be sent through the mail.
+    """
+
+## price_tracker(coin_1: str = "BTC", coin_2: str = "USDT", price: float = 0.0, mail: bool = False) -> str:
+    """Get the current price of the coin_1 and send a mail
+
+    Args:
+        coin_1 (str, optional): The price of the coin you want to check. Defaults to "BTC".
+        coin_2 (str, optional): The coin you want to check the price against. Defaults to "USDT".
+        price (float, optional): The price above which if the price of coin_1 reaches you want to send the mail. Defaults to 0.0.
+        mail (boolm optional): Set to True to send mail of the price. Defaults to False.
+    """
