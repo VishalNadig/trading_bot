@@ -14,10 +14,10 @@ import yaml
 from matplotlib import pyplot
 from tradingview_ta import TA_Handler
 
-import constants
-from paths import paths
 
-INITIAL_INVESTMENT = constants.INITIAL_INVESTMENT  # In BTC
+import constants
+import paths
+
 PARSER = argparse.ArgumentParser()
 CONFIG_FILE = paths.CONFIG_FILE
 ORDER_HISTORY_FILE = paths.ORDER_HISTORY_FILE
@@ -31,9 +31,6 @@ INTERVAL_DICT = constants.INTERVAL_DICT
 URL_DICT = constants.URL_DICT
 REMOVE_CURRENCIES = constants.REMOVE_CURRENCIES
 
-# HISTORY_COLS = ["market", "last_price", "quantity", "type", "side", "timestamp", 'order_id']
-# history_file = pd.DataFrame(columns=HISTORY_COLS)
-# history_file.to_csv(ORDER_HISTORY_FILE, mode="w")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -105,7 +102,39 @@ def add_keys(
         return {404: "Error user already present!"}
 
 
-def get_ticker(coin_1: str = "BTC", coin_2: str = "USDT", coins_list: list = []) -> dict:
+def update_keys(first_name: str = "",
+    last_name: str = "",
+    api_key: str = "",
+    secret_key: str = "",
+    email: str = "",
+    google_auth_key: str = "",):
+    user = first_name + last_name
+    user = user.lower()
+    user = user.replace(" ", "")
+    dict_update = CONFIG
+    dict_dump = {
+        "username": first_name.title() + last_name.title(),
+        "email": email,
+        "api_key": api_key,
+        "secret_key": secret_key,
+        "google_auth_key": google_auth_key,
+    }
+    if user not in dict_update["trading"]["accounts"]:
+        return {404: "Error user not present!"}
+    else:
+        dict_update["trading"]["accounts"][user] = dict_dump
+        with open(CONFIG_FILE, "w", encoding="utf-8") as file:
+            yaml.safe_dump(dict_update, file)
+        return {200: "User updated!"}
+
+
+def delete_keys(first_name: str, last_name: str, user: str):
+    user = first_name + last_name
+    user = user.lower()
+    user = user.replace(" ", "")
+
+
+def get_ticker(coin_1: str = "BTC", coin_2: str = "USDT") -> dict:
     """Get the ticker details of the coin
 
     Args:
@@ -115,23 +144,18 @@ def get_ticker(coin_1: str = "BTC", coin_2: str = "USDT", coins_list: list = [])
     Returns:
         dict: The dictionary of the coins details
     """
-    url = "https://api.coindcx.com/exchange/ticker"
+    url = URL_DICT["TICKER_URL"]
     response = requests.get(url)
     data = response.json()
     coins_dictionary = {}
-    if len(coins_list) == 0:
-        for coins in data:
-            if coins['market'] == coin_1+coin_2:
-                return coins
-    else:
-        for coin in coins_list:
-            for coins in data:
-                if coins['symbol'] == coin+"USDT":
-                    coins_dictionary[coins['symbol']] = coins
-        return coins_dictionary
+    for coins in data:
+        if coins['market'] == coin_1+coin_2:
+            coins['unix_timestamp'] = coins['timestamp']
+            coins['timestamp'] = datetime.fromtimestamp(coins['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+            return coins
 
 
-def get_markets_details(coin_1: str = "BTC", coin_2: str = "USDT", coins_list: list = []) -> dict:
+def get_markets_details(coin_1: str = "", coin_2: str = "", coins_list: list = [], all_coins: bool = False) -> dict:
     """Get the market details of the coins listed on the exchange. This includes the max leverage of the coin, the market it trades in, the min quantity to place an order, the max quantity to place an order.
 
     Args:
@@ -146,7 +170,14 @@ def get_markets_details(coin_1: str = "BTC", coin_2: str = "USDT", coins_list: l
     response = requests.get(url)
     data = response.json()
     coins_dictionary  = {}
-    if len(coins_list) == 0:
+
+    if all_coins:
+        print(coin_2)
+        for coins in data:
+            if coin_2 in coins['symbol']:
+                coins_list.append(coins)
+        return coins_list
+    elif len(coins_list) == 0:
         for coins in data:
             if coins['symbol'] == coin_1+coin_2:
                 return coins
@@ -203,9 +234,10 @@ def place_buy_limit_order(user: str = CONFIG['Owner']['alt_username'], coin_1: s
         )
     logging.info("Written to order history file!")
     file.close()
+    return data
 
 
-def place_sell_limit_order(user: str = CONFIG['Owner']['alt_username'], coin_1: str = "BTC", coin_2: str = "USDT", price: float = 0.25, total_quantity: float = 450.0) -> None:
+def place_sell_limit_order(user: str = CONFIG['Owner']['alt_username'], coin_1: str = "BTC", coin_2: str = "USDT", price: float = 0.25, total_quantity: float = 450) -> None:
     """Place a buy limit order on the market pair specified.
 
     Args:
@@ -214,12 +246,10 @@ def place_sell_limit_order(user: str = CONFIG['Owner']['alt_username'], coin_1: 
         price (float): The price at which to sell.
         total_quantity (float): The number of stocks or coins to sell.
     """
-    # TODO: Find a way to make the price argument to be dynamic for the coins
+
     secret_bytes = bytes(get_keys(user=user)[1], encoding="utf-8")
     time_stamp = int(round(time.time() * 1000))
-    # message = (
-    #     f"Sell order of {total_quantity} for market {market} placed at {price} price"
-    # )
+
     body = {
         "side": "sell",  # Toggle between 'buy' or 'sell'.
         "order_type": "limit_order",  # Toggle between a 'market_order' or 'limit_order'.
@@ -264,7 +294,7 @@ def place_market_buy_order(user: str = CONFIG['Owner']['alt_username'], coin_1: 
         market (str): The market pair to place the order. Eg: BTCUSDT, TATAINR.
         total_quantity (float): The number of stocks or coins to buy.
     """
-    # TODO: Find a way to get the total quantity to sell for each coin dynamically.
+
     secret_bytes = bytes(get_keys(user=user)[1], encoding="utf-8")
     time_stamp = int(round(time.time() * 1000))
 
@@ -272,7 +302,7 @@ def place_market_buy_order(user: str = CONFIG['Owner']['alt_username'], coin_1: 
         "side": "buy",  # Toggle between 'buy' or 'sell'.
         "order_type": "market_order",  # Toggle between a 'market_order' or 'limit_order'.
         "market": f"{coin_1+coin_2}",  # Replace 'SNTBTC' with your desired market pair.
-        "total_quantity": 450,  # Replace this with the quantity you want
+        "total_quantity": total_quantity,  # Replace this with the quantity you want
         "timestamp": time_stamp,
     }
     json_body = json.dumps(body, separators=(",", ":"))
@@ -286,26 +316,23 @@ def place_market_buy_order(user: str = CONFIG['Owner']['alt_username'], coin_1: 
     }
     response = requests.post(URL_DICT["NEW_ORDER_URL"], data=json_body, headers=headers)
     data = response.json()
-    if data['status'] == 'error':
-        logging.info(data)
-        return {404: data}
-    else:
-        with open(ORDER_HISTORY_FILE, "a", newline="") as file:
-            csvwrite = csv.writer(file, dialect="excel")
-            csvwrite.writerow(
-            [
-                "",
-                coin_1+coin_2,
-                total_quantity,
-                "market_order",
-                "buy",
-                TODAY,
-            ]
-        )
-            logging.info("Written to file")
 
+    with open(ORDER_HISTORY_FILE, "a", newline="") as file:
+        csvwrite = csv.writer(file, dialect="excel")
+        csvwrite.writerow(
+        [
+            "",
+            coin_1+coin_2,
+            total_quantity,
+            "market_order",
+            "buy",
+            TODAY,
+        ]
+    )
+        logging.info("Written to file")
+    return data
 
-def place_market_sell_order(user: str = CONFIG['Owner']['alt_username'], coin_1: str = "BTC", coin_2: str = "USDT", total_quantity: float = 450.0) -> None:
+def place_market_sell_order(user: str = CONFIG['Owner']['alt_username'], coin_1: str = "BTC", coin_2: str = "USDT", total_quantity: float = 450) -> None:
     """Place a sell market order on the market pair specified. The order is placed at the current market price. This order gets executed immediately.
 
     Args:
@@ -313,7 +340,7 @@ def place_market_sell_order(user: str = CONFIG['Owner']['alt_username'], coin_1:
         market (str): The market pair to place the order. Eg: BTCUSDT, TATAINR.
         total_quantity (float): The number of stocks or coins to buy.
     """
-    # TODO: Find a way to get the total quantity to sell for each coin dynamically.
+
 
     secret_bytes = bytes(get_keys(user=user)[1], encoding="utf-8")
     time_stamp = int(round(time.time() * 1000))
@@ -352,7 +379,7 @@ def place_market_sell_order(user: str = CONFIG['Owner']['alt_username'], coin_1:
         )
     logging.info("Written to order history file!")
     file.close()
-
+    return data
 
 def create_multiple_orders(user: str = CONFIG['Owner']['alt_username'], orders: list = []) -> None:
     """Create multiple orders at once.
@@ -650,65 +677,66 @@ def bot_trader(user: str = CONFIG['Owner']['alt_username'], coin_1: str = "BTC",
             indicator_data_["Pivot.M.Fibonacci.R2"],
             indicator_data_["Pivot.M.Fibonacci.R3"],
         ]
-        # data_frame = pd.DataFrame.from_dict(data)
-        # data_frame = data_frame.sort_values("market")
-        # # data_frame = data_frame[columns]
-        # data_frame["timestamp"] = pd.to_datetime(data_frame["timestamp"], unit="s") + timedelta(
-        #     hours=5, minutes=30
-        # )
-        # for currency in REMOVE_CURRENCIES:
-        #     data_frame = data_frame[~data_frame.market.str.endswith(currency)]
-        # data_frame = data_frame.reset_index(drop=True)
-        # data_frame = data_frame.sort_index(ascending=True, axis=0)
+        data_frame = pd.DataFrame.from_dict(data)
+        data_frame = data_frame.sort_values("market")
+        # data_frame = data_frame[columns]
+        data_frame["timestamp"] = pd.to_datetime(data_frame["timestamp"], unit="s") + timedelta(
+            hours=5, minutes=30
+        )
+        for currency in REMOVE_CURRENCIES:
+            data_frame = data_frame[~data_frame.market.str.endswith(currency)]
+        data_frame = data_frame.reset_index(drop=True)
+        data_frame = data_frame.sort_index(ascending=True, axis=0)
         current_price = get_ticker(coin_1=coin_1,coin_2=coin_2)['last_price']
         # SET BUY PRICE, SELL PRICE AND STOP LOSS CONDITIONS
-        # if current_price < pivot and current_price > supports[0] and current_price < close_price:
-        #     buy_price = supports[0]
-        #     stop_loss = supports[0] - int(0.01 * buy_price)
-        #     sell_price = pivot
-        # elif (
-        #     current_price < supports[0]
-        #     and current_price > supports[1]
-        #     and current_price < close_price
-        # ):
-        #     buy_price = supports[1]
-        #     stop_loss = supports[1] - int(0.01 * buy_price)
-        #     sell_price = supports[0]
-        # elif (
-        #     current_price < supports[1]
-        #     and current_price > supports[2]
-        #     and current_price < close_price
-        # ):
-        #     buy_price = supports[2]
-        #     stop_loss = supports[2] - int(0.01 * buy_price)
-        #     sell_price = supports[1]
-        # elif current_price < supports[2]:
-        #     pass
-        # order_size = 0.33 * account_balance
-        # if (  # BUY CONDITIONS
-        #     float(current_price) == buy_price and not open_position and order_size > min_order_value
-        # ) or (rsi < 37 and not open_position and order_size > min_order_value):
-        #     place_buy_limit_order(
-        #         user=user, market=market, price=buy_price, total_quantity=order_size
-        #     )
-        #     logging.info(
-        #         f"Buy Order placed! for {coin_1+coin_2} at price {buy_price}. Stop loss is {stop_loss}"
-        #     )
-        #     open_position = True
-        # if (  # SELL CONDITIONS
-        #     (float(current_price) == sell_price and open_position)
-        #     or float(current_price) == stop_loss
-        #     or (rsi > 60 and open_position)
-        # ):
-        #     place_sell_limit_order(
-        #         user=user, market=market, price=sell_price, total_quantity=order_size
-        #     )
-        #     logging.info(f"Sold {market} for: {sell_price}")
-        #     logging.info(f"The current account balance is: {account_balance} BTC")
-        #     open_position = False
-        #     no_of_trades += 1
-        #     profit = ((sell_price - buy_price) / buy_price) * (100)
-        #     logging.info(f"made {profit}% profits!")
+        if current_price < pivot and current_price > supports[0] and current_price < close_price:
+            buy_price = supports[0]
+            stop_loss = supports[0] - int(0.01 * buy_price)
+            sell_price = pivot
+        elif (
+            current_price < supports[0]
+            and current_price > supports[1]
+            and current_price < close_price
+        ):
+            buy_price = supports[1]
+            stop_loss = supports[1] - int(0.01 * buy_price)
+            sell_price = supports[0]
+        elif (
+            current_price < supports[1]
+            and current_price > supports[2]
+            and current_price < close_price
+        ):
+            buy_price = supports[2]
+            stop_loss = supports[2] - int(0.01 * buy_price)
+            sell_price = supports[1]
+        elif current_price < supports[2]:
+            pass
+        order_size = 0.33 * account_balance
+        if (  # BUY CONDITIONS
+            float(current_price) == buy_price and not open_position and order_size > min_order_value
+        ) or (rsi < 37 and not open_position and order_size > min_order_value):
+            place_buy_limit_order(
+                user=user, market=market, price=buy_price, total_quantity=order_size
+            )
+            logging.info(
+                f"Buy Order placed! for {coin_1+coin_2} at price {buy_price}. Stop loss is {stop_loss}"
+            )
+            open_position = True
+        if (  # SELL CONDITIONS
+            (float(current_price) == sell_price and open_position)
+            or float(current_price) == stop_loss
+            or (rsi > 60 and open_position)
+        ):
+            place_sell_limit_order(
+                user=user, price=sell_price, total_quantity=order_size
+            )
+            logging.info(f"Sold {market} for: {sell_price}")
+            logging.info(f"The current account balance is: {account_balance} BTC")
+            open_position = False
+            no_of_trades += 1
+            profit = ((sell_price - buy_price) / buy_price) * (100)
+            logging.info(f"made {profit}% profits!")
+            send_mail(f"Sold {coin_2} for {profit}% profits!")
 
 
 def get_account_balance(user: str = CONFIG['Owner']['alt_username']) -> dict:
@@ -788,7 +816,7 @@ def indicator_data(
 
     Args:
         symbol (_type_): Ticker Ex: "CIPLA", "TATAMOTORS", "XVGBTC", "BTCUSDT"
-        market (str): Exchange ("NSE", "BSE", "Binance")
+        market (str): Exchange ("NSE", "BSE", "Binance", "Huobi", "Kucoin")
         screener_name (str, optional): Either "India" or "Crypto". Defaults to "Crypto".
         interval (str, optional): Interval of chart "1m", "5m", "30m", "1h", "2h", "4h", "1d", "1W", "1M". Defaults to "4h".
 
@@ -824,6 +852,11 @@ def auto_trader(user: str = CONFIG['Owner']['alt_username']):
                 and float(coins_currently_held[coins]["Balance"]) > 1.0
             ):
                 print(coins)
+                indi_data = indicator_data(coin_1=coins)
+                print(indi_data['RSI'])
+                if indi_data['RSI'] > 70:
+                    print(f"Selling {coins}")
+                    send_mail(f"Sold {coins}", receiver="nadigvishal@gmail.com")
 
 
 def parser_activated_bot() -> None:
@@ -852,6 +885,23 @@ def parser_activated_bot() -> None:
         screener_name=args.Screener,
         interval=args.interval,
     )
+
+
+def get_rsi_signal(coin_1, coin_2, screener_name, market, interval):
+    trading_pair = TA_Handler(
+        symbol=f"{coin_1+coin_2}",
+        screener=f"{screener_name}",
+        exchange=f"{market}",
+        interval="4h",)
+    # Get RSI value for the last 14 periods on the daily timeframe
+    rsi = trading_pair.get_analysis().indicators['RSI']
+    print(rsi)
+
+    # Print BUY if RSI is below 30, SELL if RSI is above 70, otherwise do nothing
+    if rsi < 30:
+        print("BUY")
+    elif rsi > 70:
+        print("SELL")
 
 
 def plot_historical_data(
@@ -915,8 +965,21 @@ def price_tracker(coin_1: str = "BTC", coin_2: str = "USDT", price: float = 0.0,
                 return message
 
 
+def buy_sell_recommendation(coin_1: str = "BTC", coin_2: str = "USDT", market: str = "Binance", screener_name: str = "Crypto", interval: str = "4h"):
+    try:
+        indicator = indicator_data(coin_1=coin_1, coin_2 = coin_2, market=market, screener_name=screener_name, interval=interval)
+        if indicator['RSI'] > 70:
+            return {200: f"The RSI value of {coin_1} is over 70 and hence is in a strong SELL zone."}
+        elif indicator['RSI'] < 30:
+            return {200: f"The RSI value of {coin_1} is less than 30 and hence is in a BUY zone."}
+
+    except Exception:
+        pass
+
+
+def candle_plot(coin_1: str = "BTC", coin_2: str = "USDT", interval: str = "4h", limit: str = 100):
+    candle_data = get_candles(coin_1=coin_1, coin_2=coin_2, interval=interval, limit=limit)
+
+
 if __name__ == "__main__":
-    # print(get_ticker(coin_1="VET"))
-    # price_tracker(coin_1 = "VET", price=0.023)
-    print(get_account_balance())
-    # print(get_candles())
+    pass
