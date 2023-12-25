@@ -1,6 +1,6 @@
 from tradingview_ta import Interval
 
-INITIAL_INVESTMENT = 0.00037751708
+INITIAL_INVESTMENT = 0.016 #BTC
 SCREENER_LIST = ["India", "Crypto"]
 API_DICTS = {
     "coindcx": "https://api.coindcx.com/exchange/ticker",
@@ -20,6 +20,7 @@ INTERVAL_DICT = {
 }
 
 URL_DICT = {
+    "ALL_COIN_PAIRS_URL": "https://api.coindcx.com/",
     "MARKET_DATA_URL": "https://api.coindcx.com/exchange/ticker",
     "NEW_ORDER_URL": "https://api.coindcx.com/exchange/v1/orders/create",
     "CREATE_MULTIPLE_ORDERS_URL": "https://api.coindcx.com/exchange/v1/orders/create_multiple",
@@ -36,7 +37,10 @@ URL_DICT = {
     "CANDLES_URL": "https://public.coindcx.com/market_data/candles",
     "MARKET_DETAILS_URL": "https://api.coindcx.com/exchange/v1/markets_details",
     "TICKER_URL": "https://public.coindcx.com/exchange/ticker",
-    "USER_INFO": "https://public.coindcx.com/exchange/v1/users/info"
+    "USER_INFO": "https://public.coindcx.com/exchange/v1/users/info",
+    "LEND_ORDERS_URL": "https://api.coindcx.com/exchange/v1/funding/lend",
+    "SETTLE_ORDERS_URL": "https://api.coindcx.com/exchange/v1/funding/settle",
+    "FETCH_LEND_ORDERS_URL": "https://api.coindcx.com/exchange/v1/funding/fetch_orders",
 }
 
 REMOVE_CURRENCIES = {

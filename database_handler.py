@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, MetaData
 import yaml
 from cryptography.fernet import Fernet
-import paths
+from paths import paths
 
 
 CONFIG_FILE = paths.CONFIG_FILE
@@ -51,7 +51,7 @@ def decrypt_data(key: str = CONFIG['database_creds']['DATABASE_1']['key'], passw
         return {404: "Error password not found!"}
 
 
-def get_credentials(username: str = "", first_name: str = "", last_name: str = "") -> tuple:
+def get_user_credentials(username: str = "", first_name: str = "", last_name: str = "") -> tuple:
     """Fetch the use credentials from the database.
 
     Args:
@@ -84,7 +84,7 @@ def get_credentials(username: str = "", first_name: str = "", last_name: str = "
     #     return Exception
 
 
-def add_user(
+def add_user_credentials(
     first_name: str = "",
     last_name: str = "",
     api_key: str = "",
@@ -128,7 +128,7 @@ def add_user(
     except Exception:
         print(Exception)
 
-def update_user(username: str = "",
+def update_user_credentials(username: str = "",
     first_name: str = "",
     last_name: str = "",
     api_key: str = "",
@@ -181,7 +181,7 @@ def update_user(username: str = "",
         return {404: "User not Found!"}
 
 
-def delete_user(username: str = "", first_name: str = "", last_name: str = "") -> dict:
+def delete_user_credentials(username: str = "", first_name: str = "", last_name: str = "") -> dict:
     """Delete a user from the database.
 
     Args:
@@ -217,4 +217,4 @@ def delete_user(username: str = "", first_name: str = "", last_name: str = "") -
 
 if __name__ == '__main__':
     pass
-    
+
