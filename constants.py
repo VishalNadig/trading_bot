@@ -1,6 +1,6 @@
 from tradingview_ta import Interval
 
-INITIAL_INVESTMENT = 0.016 #BTC
+INITIAL_INVESTMENT = 0.016  # BTC
 SCREENER_LIST = ["India", "Crypto"]
 API_DICTS = {
     "coindcx": "https://api.coindcx.com/exchange/ticker",
@@ -55,4 +55,8 @@ REMOVE_CURRENCIES = {
     "XRP",
     "INR_insta",
 }
-MARKETS = ("Binance", "Huobi", "CoinDCX", )
+MARKETS = (
+    "Binance",
+    "Huobi",
+    "CoinDCX",
+)

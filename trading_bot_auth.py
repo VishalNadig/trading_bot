@@ -1,9 +1,10 @@
 import argparse
-import yaml
-import database_handler
-from paths import paths
 import sys
 
+import yaml
+
+import database_handler
+from paths import paths
 
 PARSER = argparse.ArgumentParser()
 LOGFILE = paths.LOGFILE
@@ -11,7 +12,10 @@ CONFIG_FILE = paths.CONFIG_FILE
 with open(CONFIG_FILE) as file:
     CONFIG = yaml.safe_load(file)
 
-def get_credentials_config_file(first_name: str = "", last_name: str = "", username: str = "") -> tuple:
+
+def get_credentials_config_file(
+    first_name: str = "", last_name: str = "", username: str = ""
+) -> tuple:
     """Get API key and secret key for the specified user. If user is not mentioned then, first name and last name of the user can be used to retrieve the keys.
 
     Args:
@@ -37,6 +41,7 @@ def get_credentials_config_file(first_name: str = "", last_name: str = "", usern
     except KeyError:
         sys.stdout.write("Key Error! Check user or first name and last name.\n")
         return {404: "Key Error! Check user or first name and last name."}
+
 
 def add_user_credentials_config_file(
     first_name: str = "",
@@ -74,12 +79,15 @@ def add_user_credentials_config_file(
     else:
         return {404: "Error user already present!"}
 
-def update_user_credentials_config_file(first_name: str = "",
+
+def update_user_credentials_config_file(
+    first_name: str = "",
     last_name: str = "",
     api_key: str = "",
     secret_key: str = "",
     email: str = "",
-    google_auth_key: str = "",):
+    google_auth_key: str = "",
+):
     """
     Updates the keys for a user in the trading accounts.
 
@@ -159,10 +167,14 @@ def get_user_credentials_database(username: str = "", first_name: str = "", last
     Returns:
         dict: A dictionary containing the user's credentials retrieved from the database.
     """
-    return database_handler.get_user_credentials(username=username, first_name=first_name, last_name=last_name)
+    return database_handler.get_user_credentials(
+        username=username, first_name=first_name, last_name=last_name
+    )
 
 
-def add_user_credentials_database(first_name: str, last_name: str, api_key: str, secret_key: str, email: str, google_auth_key: str):
+def add_user_credentials_database(
+    first_name: str, last_name: str, api_key: str, secret_key: str, email: str, google_auth_key: str
+):
     """
     Add credentials to the database.
 
@@ -178,10 +190,19 @@ def add_user_credentials_database(first_name: str, last_name: str, api_key: str,
     Returns:
         None
     """
-    return database_handler.add_user_credentials(first_name=first_name, last_name=last_name, api_key=api_key, secret_key=secret_key, email=email, google_auth_key=google_auth_key)
+    return database_handler.add_user_credentials(
+        first_name=first_name,
+        last_name=last_name,
+        api_key=api_key,
+        secret_key=secret_key,
+        email=email,
+        google_auth_key=google_auth_key,
+    )
 
 
-def update_user_credentials_database(first_name: str, last_name: str, api_key: str, secret_key: str, email: str, google_auth_key: str):
+def update_user_credentials_database(
+    first_name: str, last_name: str, api_key: str, secret_key: str, email: str, google_auth_key: str
+):
     """
     Update credentials in the database.
 
@@ -197,7 +218,14 @@ def update_user_credentials_database(first_name: str, last_name: str, api_key: s
     Returns:
         None
     """
-    return database_handler.update_user_credentials(first_name=first_name, last_name=last_name, api_key=api_key, secret_key=secret_key, email=email, google_auth_key=google_auth_key)
+    return database_handler.update_user_credentials(
+        first_name=first_name,
+        last_name=last_name,
+        api_key=api_key,
+        secret_key=secret_key,
+        email=email,
+        google_auth_key=google_auth_key,
+    )
 
 
 def delete_user_credentials_database(first_name: str, last_name: str, username: str = ""):
@@ -212,7 +240,10 @@ def delete_user_credentials_database(first_name: str, last_name: str, username: 
     Returns:
         None
     """
-    return database_handler.delete_user_credentials(first_name=first_name, last_name=last_name, username=username)
+    return database_handler.delete_user_credentials(
+        first_name=first_name, last_name=last_name, username=username
+    )
+
 
 if __name__ == "__main__":
     print(get_credentials_config_file(username="vishalnadig"))

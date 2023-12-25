@@ -1,23 +1,25 @@
-from sqlalchemy import create_engine, MetaData
 import yaml
 from cryptography.fernet import Fernet
-from paths import paths
+from sqlalchemy import MetaData, create_engine
 
+from paths import paths
 
 CONFIG_FILE = paths.CONFIG_FILE
 
 with open(CONFIG_FILE, "r") as file:
     CONFIG = yaml.safe_load(file)
 
-USER = CONFIG['database_creds']["USER"]
-PASSWORD = CONFIG['database_creds']["PASSWORD"]
-HOSTNAME = CONFIG['database_creds']['HOSTNAME']
-DATABASE = CONFIG['database_creds']['DATABASE_1']['NAME']
+USER = CONFIG["database_creds"]["USER"]
+PASSWORD = CONFIG["database_creds"]["PASSWORD"]
+HOSTNAME = CONFIG["database_creds"]["HOSTNAME"]
+DATABASE = CONFIG["database_creds"]["DATABASE_1"]["NAME"]
 METADATA = MetaData()
 URL = f"mysql+pymysql://{USER}:{PASSWORD}@{HOSTNAME}/{DATABASE}"
 
 
-def encrypt_data(key: str =CONFIG['database_creds']['DATABASE_1']['key'], password: str = "") -> dict:
+def encrypt_data(
+    key: str = CONFIG["database_creds"]["DATABASE_1"]["key"], password: str = ""
+) -> dict:
     """Encrypt the sensitive credentials such as API key, SECRET key and Google Auth Key.
 
     Args:
@@ -34,7 +36,9 @@ def encrypt_data(key: str =CONFIG['database_creds']['DATABASE_1']['key'], passwo
         return {404: "Error password not found!"}
 
 
-def decrypt_data(key: str = CONFIG['database_creds']['DATABASE_1']['key'], password: str = "") -> dict:
+def decrypt_data(
+    key: str = CONFIG["database_creds"]["DATABASE_1"]["key"], password: str = ""
+) -> dict:
     """Decrypt the sensitive credentials to use for API call authentication.
 
     Args:
@@ -46,7 +50,7 @@ def decrypt_data(key: str = CONFIG['database_creds']['DATABASE_1']['key'], passw
     """
     if password != "":
         fernet = Fernet(key)
-        return {"password": fernet.decrypt(bytes(password, 'utf-8')).decode()}
+        return {"password": fernet.decrypt(bytes(password, "utf-8")).decode()}
     else:
         return {404: "Error password not found!"}
 
@@ -66,18 +70,29 @@ def get_user_credentials(username: str = "", first_name: str = "", last_name: st
     # try:
     engine = create_engine(URL)
 
-    if first_name.title() + " " + last_name.title() in engine.connect().execute("SELECT USERNAME FROM trading_bot.users;").fetchall()[0][0]:
+    if (
+        first_name.title() + " " + last_name.title()
+        in engine.connect().execute("SELECT USERNAME FROM trading_bot.users;").fetchall()[0][0]
+    ):
         if username == "":
             username = first_name.title() + " " + last_name.title()
 
-            encrypted_api_key, encrypted_secret_key =  engine.connect().execute(f"""SELECT api_key, secret_key FROM users WHERE username = '{username}'""").fetchall()[0]
-            api_key = decrypt_data(password=encrypted_api_key)['password']
-            secret_key = decrypt_data(password=encrypted_secret_key)['password']
+            encrypted_api_key, encrypted_secret_key = (
+                engine.connect()
+                .execute(f"""SELECT api_key, secret_key FROM users WHERE username = '{username}'""")
+                .fetchall()[0]
+            )
+            api_key = decrypt_data(password=encrypted_api_key)["password"]
+            secret_key = decrypt_data(password=encrypted_secret_key)["password"]
         else:
-            encrypted_api_key, encrypted_secret_key =  engine.connect().execute(f"""SELECT api_key, secret_key FROM users WHERE username = '{username}'""").fetchall()[0]
-            api_key = decrypt_data(password=encrypted_api_key)['password']
-            secret_key = decrypt_data(password=encrypted_secret_key)['password']
-        return api_key,secret_key
+            encrypted_api_key, encrypted_secret_key = (
+                engine.connect()
+                .execute(f"""SELECT api_key, secret_key FROM users WHERE username = '{username}'""")
+                .fetchall()[0]
+            )
+            api_key = decrypt_data(password=encrypted_api_key)["password"]
+            secret_key = decrypt_data(password=encrypted_secret_key)["password"]
+        return api_key, secret_key
     else:
         return {404: "User Not Found!"}
     # except Exception:
@@ -109,32 +124,49 @@ def add_user_credentials(
     user = first_name.title() + " " + last_name.title()
     engine = create_engine(URL)
     connection = engine.connect()
-    encrypted_api_key = encrypt_data(password=api_key)['password'].decode("utf-8")
-    encrypted_secret_key = encrypt_data(password=secret_key)['password'].decode("utf-8")
-    encrypted_google_auth_key = encrypt_data(password=google_auth_key)['password'].decode("utf-8")
+    encrypted_api_key = encrypt_data(password=api_key)["password"].decode("utf-8")
+    encrypted_secret_key = encrypt_data(password=secret_key)["password"].decode("utf-8")
+    encrypted_google_auth_key = encrypt_data(password=google_auth_key)["password"].decode("utf-8")
     try:
 
-        if connection.execute(f""" SELECT username from users where username = '{user}';""").fetchone() is not None:
-            if user not in connection.execute(f""" SELECT username from users where username = '{user}';""").fetchone()[0]:
-                engine.connect().execute(f"""INSERT INTO trading_bot.users (username, email, api_key, secret_key, google_auth_key)
-        VALUES ('{first_name.title() + " " + last_name.title()}', '{email}', '{encrypted_api_key}', '{encrypted_secret_key}', '{encrypted_google_auth_key}');""")
+        if (
+            connection.execute(
+                f""" SELECT username from users where username = '{user}';"""
+            ).fetchone()
+            is not None
+        ):
+            if (
+                user
+                not in connection.execute(
+                    f""" SELECT username from users where username = '{user}';"""
+                ).fetchone()[0]
+            ):
+                engine.connect().execute(
+                    f"""INSERT INTO trading_bot.users (username, email, api_key, secret_key, google_auth_key)
+        VALUES ('{first_name.title() + " " + last_name.title()}', '{email}', '{encrypted_api_key}', '{encrypted_secret_key}', '{encrypted_google_auth_key}');"""
+                )
                 return {200: "User added!"}
             else:
                 return {404: "Error user already present!"}
         else:
-            engine.connect().execute(f"""INSERT INTO trading_bot.users (username, email, api_key, secret_key, google_auth_key)
-        VALUES ('{first_name.title() + " " + last_name.title()}', '{email}', '{encrypted_api_key}', '{encrypted_secret_key}', '{encrypted_google_auth_key}');""")
+            engine.connect().execute(
+                f"""INSERT INTO trading_bot.users (username, email, api_key, secret_key, google_auth_key)
+        VALUES ('{first_name.title() + " " + last_name.title()}', '{email}', '{encrypted_api_key}', '{encrypted_secret_key}', '{encrypted_google_auth_key}');"""
+            )
             return {200: "User added!"}
     except Exception:
         print(Exception)
 
-def update_user_credentials(username: str = "",
+
+def update_user_credentials(
+    username: str = "",
     first_name: str = "",
     last_name: str = "",
     api_key: str = "",
     secret_key: str = "",
     email: str = "",
-    google_auth_key: str = "",) -> dict:
+    google_auth_key: str = "",
+) -> dict:
     """Update the user credentials in the database.
 
     Args:
@@ -155,24 +187,66 @@ def update_user_credentials(username: str = "",
         user = first_name.title() + " " + last_name.title()
     else:
         user = username
-    encrypted_api_key = encrypt_data(password=api_key)['password'].decode("utf-8")
-    encrypted_secret_key = encrypt_data(password=secret_key)['password'].decode("utf-8")
-    print(encrypt_data(password=google_auth_key)['password'].decode("utf-8"))
-    encrypted_google_auth_key = encrypt_data(password=google_auth_key)['password'].decode("utf-8")
-    if user == connection.execute(f"""SELECT username from users WHERE username = '{user}'""").fetchone()[0]:
-        if encrypted_api_key != "" and encrypted_secret_key != "" and encrypted_google_auth_key != "" and email != "":
-            connection.execute(f"""UPDATE users SET api_key = '{encrypted_api_key}', secret_key = '{encrypted_secret_key}', google_auth_key = '{encrypted_google_auth_key}', email = '{email}' WHERE username = '{user}';""")
+    encrypted_api_key = encrypt_data(password=api_key)["password"].decode("utf-8")
+    encrypted_secret_key = encrypt_data(password=secret_key)["password"].decode("utf-8")
+    print(encrypt_data(password=google_auth_key)["password"].decode("utf-8"))
+    encrypted_google_auth_key = encrypt_data(password=google_auth_key)["password"].decode("utf-8")
+    if (
+        user
+        == connection.execute(
+            f"""SELECT username from users WHERE username = '{user}'"""
+        ).fetchone()[0]
+    ):
+        if (
+            encrypted_api_key != ""
+            and encrypted_secret_key != ""
+            and encrypted_google_auth_key != ""
+            and email != ""
+        ):
+            connection.execute(
+                f"""UPDATE users SET api_key = '{encrypted_api_key}', secret_key = '{encrypted_secret_key}', google_auth_key = '{encrypted_google_auth_key}', email = '{email}' WHERE username = '{user}';"""
+            )
             return {200: "User Updated"}
-        elif encrypted_api_key != "" and encrypted_api_key != connection.execute(f""" SELECT API_KEY FROM users WHERE username = '{user}' """).fetchone()[0]:
-            connection.execute(f"""UPDATE users SET api_key = '{encrypted_api_key}' WHERE username = '{user}';""")
+        elif (
+            encrypted_api_key != ""
+            and encrypted_api_key
+            != connection.execute(
+                f""" SELECT API_KEY FROM users WHERE username = '{user}' """
+            ).fetchone()[0]
+        ):
+            connection.execute(
+                f"""UPDATE users SET api_key = '{encrypted_api_key}' WHERE username = '{user}';"""
+            )
             return {200: "User api_key Updated!"}
-        elif encrypted_secret_key != "" and encrypted_secret_key != connection.execute(f""" SELECT SECRET_KEY FROM users WHERE username = '{user}' """).fetchone()[0]:
-            connection.execute(f"""UPDATE users SET secret_key = '{encrypted_secret_key}' WHERE username = '{user}';""")
+        elif (
+            encrypted_secret_key != ""
+            and encrypted_secret_key
+            != connection.execute(
+                f""" SELECT SECRET_KEY FROM users WHERE username = '{user}' """
+            ).fetchone()[0]
+        ):
+            connection.execute(
+                f"""UPDATE users SET secret_key = '{encrypted_secret_key}' WHERE username = '{user}';"""
+            )
             return {200: "User secret_key Updated!"}
-        elif encrypted_google_auth_key != "" and encrypted_google_auth_key != connection.execute(f"""SELECT GOOGLE_AUTH_KEY FROM users WHERE username = '{user}'""").fetchone()[0]:
-            connection.execute(f"""UPDATE users SET google_auth_key = '{encrypted_google_auth_key}' WHERE username = '{user}';""")
+        elif (
+            encrypted_google_auth_key != ""
+            and encrypted_google_auth_key
+            != connection.execute(
+                f"""SELECT GOOGLE_AUTH_KEY FROM users WHERE username = '{user}'"""
+            ).fetchone()[0]
+        ):
+            connection.execute(
+                f"""UPDATE users SET google_auth_key = '{encrypted_google_auth_key}' WHERE username = '{user}';"""
+            )
             return {200: "User google_auth_key Updated!"}
-        elif email != "" and email != connection.execute(f"""SELECT EMAIL FROM users WHERE username = {user}""").fetchone()[0]:
+        elif (
+            email != ""
+            and email
+            != connection.execute(
+                f"""SELECT EMAIL FROM users WHERE username = {user}"""
+            ).fetchone()[0]
+        ):
             connection.execute(f"""UPDATE users SET email = '{email}' WHERE username = '{user}';""")
             return {200: "User email Updated!"}
         else:
@@ -215,6 +289,5 @@ def delete_user_credentials(username: str = "", first_name: str = "", last_name:
         return {200: "User deleted!"}
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass
-
