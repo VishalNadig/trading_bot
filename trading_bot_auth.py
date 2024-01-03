@@ -1,16 +1,19 @@
+"""Python script to manage Authentication of users to use the trading bot."""
 import argparse
-import sys
+import logging
 
 import yaml
 
 import database_handler
-from paths import paths
+from constants import CONFIG, CONFIG_FILE, LOGFILE
 
 PARSER = argparse.ArgumentParser()
-LOGFILE = paths.LOGFILE
-CONFIG_FILE = paths.CONFIG_FILE
-with open(CONFIG_FILE) as file:
-    CONFIG = yaml.safe_load(file)
+logging.basicConfig(
+    level=logging.INFO,
+    filemode="a",
+    filename=LOGFILE,
+    format="%(asctime)s;%(levelname)s;%(message)s",
+)
 
 
 def get_credentials_config_file(
@@ -28,22 +31,23 @@ def get_credentials_config_file(
     """
     try:
 
-        if first_name and last_name != "":
-            user = first_name + last_name
-            user = user.lower()
-            user = user.replace(" ", "")
+        if username:
+            user = username.lower().replace(" ", "")
+        elif first_name and last_name:
+            user = (first_name + last_name).lower().replace(" ", "")
         else:
-            user = username.lower()
-            user = username.replace(" ", "")
+            raise ValueError("Either username or first_name and last_name must be provided.")
         api_key = CONFIG["trading"]["accounts"][user]["api_key"]
         secret_key = CONFIG["trading"]["accounts"][user]["secret_key"]
+        logging.info(f"API key and Secret key retrieved for {user}.")
         return api_key, secret_key
     except KeyError:
-        sys.stdout.write("Key Error! Check user or first name and last name.\n")
+        logging.info("Key Error! Check user or first name and last name.")
         return {404: "Key Error! Check user or first name and last name."}
 
 
 def add_user_credentials_config_file(
+    username: str = "",
     first_name: str = "",
     last_name: str = "",
     api_key: str = "",
@@ -59,11 +63,14 @@ def add_user_credentials_config_file(
         api_key (str, optional): API key of the user.
         secret_key (str, optional): API secret of the user.
     """
-    user = first_name + last_name
-    user = user.lower()
-    user = user.replace(" ", "")
-    dict_update = CONFIG
-    dict_dump = {
+    if username:
+        user = username.lower().replace(" ", "")
+    elif first_name and last_name:
+        user = (first_name + last_name).lower().replace(" ", "")
+    else:
+        raise ValueError("Either username or first_name and last_name must be provided.")
+    config_dictionary = CONFIG
+    updated_dictionary = {
         "username": first_name.title() + last_name.title(),
         "email": email,
         "api_key": api_key,
@@ -71,16 +78,19 @@ def add_user_credentials_config_file(
         "google_auth_key": google_auth_key,
     }
 
-    if user not in dict_update["trading"]["accounts"]:
-        dict_update["trading"]["accounts"][user] = dict_dump
+    if user not in config_dictionary["trading"]["accounts"]:
+        config_dictionary["trading"]["accounts"][user] = updated_dictionary
         with open(CONFIG_FILE, "w", encoding="utf-8") as file:
-            yaml.safe_dump(dict_update, file)
+            yaml.safe_dump(config_dictionary, file)
+        logging.info(f"{user} added successfully.")
         return {200: "User added!"}
     else:
+        logging.info("Error user already present!")
         return {404: "Error user already present!"}
 
 
 def update_user_credentials_config_file(
+    username: str = "",
     first_name: str = "",
     last_name: str = "",
     api_key: str = "",
@@ -104,23 +114,28 @@ def update_user_credentials_config_file(
         If the user is not present, returns {404: "Error user not present!"}.
         If the user is updated successfully, returns {200: "User updated!"}.
     """
-    user = first_name + last_name
-    user = user.lower()
-    user = user.replace(" ", "")
-    dict_update = CONFIG
-    dict_dump = {
+    if username:
+        user = username.lower().replace(" ", "")
+    elif first_name and last_name:
+        user = (first_name + last_name).lower().replace(" ", "")
+    else:
+        raise ValueError("Either username or first_name and last_name must be provided.")
+    config_dictionary = CONFIG
+    updated_dictionary = {
         "username": first_name.title() + last_name.title(),
         "email": email,
         "api_key": api_key,
         "secret_key": secret_key,
         "google_auth_key": google_auth_key,
     }
-    if user not in dict_update["trading"]["accounts"]:
+    if user not in config_dictionary["trading"]["accounts"]:
+        logging.info("Error user not present!")
         return {404: "Error user not present!"}
     else:
-        dict_update["trading"]["accounts"][user] = dict_dump
+        config_dictionary["trading"]["accounts"][user] = updated_dictionary
         with open(CONFIG_FILE, "w", encoding="utf-8") as file:
-            yaml.safe_dump(dict_update, file)
+            yaml.safe_dump(config_dictionary, file)
+        logging.info(f"{user} updated successfully.")
         return {200: "User updated!"}
 
 
@@ -138,20 +153,21 @@ def delete_user_credentials_config_file(first_name: str, last_name: str, usernam
             - If the user is successfully deleted, the dictionary will contain the key 200 and the value "User deleted!".
             - If the user is not present, the dictionary will contain the key 404 and the value "Error user not present!".
     """
-    if first_name is not None and last_name is not None:
-        user = first_name + last_name
-        user = user.lower()
-        user = user.replace(" ", "")
+    if username:
+        user = username.lower().replace(" ", "")
+    elif first_name and last_name:
+        user = (first_name + last_name).lower().replace(" ", "")
     else:
-        user = user.lower()
-        user = user.replace(" ", "")
+        raise ValueError("Either username or first_name and last_name must be provided.")
 
     if user in CONFIG["trading"]["accounts"]:
         del CONFIG["trading"]["accounts"][user]
         with open(CONFIG_FILE, "w", encoding="utf-8") as file:
             yaml.safe_dump(CONFIG, file)
+        logging.info(f"{user} deleted successfully.")
         return {200: "User deleted!"}
     else:
+        logging.info("Error user not present!")
         return {404: "Error user not present!"}
 
 
@@ -167,13 +183,26 @@ def get_user_credentials_database(username: str = "", first_name: str = "", last
     Returns:
         dict: A dictionary containing the user's credentials retrieved from the database.
     """
+    if username:
+        user = username.lower().replace(" ", "")
+    elif first_name and last_name:
+        user = (first_name + last_name).lower().replace(" ", "")
+    else:
+        raise ValueError("Either username or first_name and last_name must be provided.")
+    logging.info(f"Retrieving credentials for {user}.")
     return database_handler.get_user_credentials(
-        username=username, first_name=first_name, last_name=last_name
+        username=user, first_name=first_name, last_name=last_name
     )
 
 
 def add_user_credentials_database(
-    first_name: str, last_name: str, api_key: str, secret_key: str, email: str, google_auth_key: str
+    username: str = "",
+    first_name: str = "",
+    last_name: str = "",
+    api_key: str = "",
+    secret_key: str = "",
+    email: str = "",
+    google_auth_key: str = "",
 ):
     """
     Add credentials to the database.
@@ -190,7 +219,15 @@ def add_user_credentials_database(
     Returns:
         None
     """
+    if username:
+        user = username.lower().replace(" ", "")
+    elif first_name and last_name:
+        user = (first_name + last_name).lower().replace(" ", "")
+    else:
+        raise ValueError("Either username or first_name and last_name must be provided.")
+    logging.info(f"Adding credentials for {user}.")
     return database_handler.add_user_credentials(
+        username=user,
         first_name=first_name,
         last_name=last_name,
         api_key=api_key,
@@ -201,7 +238,13 @@ def add_user_credentials_database(
 
 
 def update_user_credentials_database(
-    first_name: str, last_name: str, api_key: str, secret_key: str, email: str, google_auth_key: str
+    username: str = "",
+    first_name: str = "",
+    last_name: str = "",
+    api_key: str = "",
+    secret_key: str = "",
+    email: str = "",
+    google_auth_key: str = "",
 ):
     """
     Update credentials in the database.
@@ -218,7 +261,15 @@ def update_user_credentials_database(
     Returns:
         None
     """
+    if username:
+        user = username.lower().replace(" ", "")
+    elif first_name and last_name:
+        user = (first_name + last_name).lower().replace(" ", "")
+    else:
+        raise ValueError("Either username or first_name and last_name must be provided.")
+    logging.info(f"Updating credentials for {user}.")
     return database_handler.update_user_credentials(
+        username=user,
         first_name=first_name,
         last_name=last_name,
         api_key=api_key,
@@ -240,9 +291,151 @@ def delete_user_credentials_database(first_name: str, last_name: str, username: 
     Returns:
         None
     """
+    if username:
+        user = username.lower().replace(" ", "")
+    elif first_name and last_name:
+        user = (first_name + last_name).lower().replace(" ", "")
+    else:
+        raise ValueError("Either username or first_name and last_name must be provided.")
+    logging.info(f"Deleting credentials for {user}.")
     return database_handler.delete_user_credentials(
-        first_name=first_name, last_name=last_name, username=username
+        first_name=first_name, last_name=last_name, username=user
     )
+
+
+def get_user_credentials(first_name: str = "", last_name: str = "", username: str = ""):
+    """
+    Retrieves the user credentials based on the provided parameters.
+
+    Parameters:
+        first_name (str): The first name of the user. Defaults to an empty string.
+        last_name (str): The last name of the user. Defaults to an empty string.
+        username (str): The username of the user. Defaults to an empty string.
+
+    Returns:
+        User credentials (dict): A dictionary containing the user credentials.
+
+    Raises:
+        ValueError: If neither the username nor the first_name and last_name are provided.
+    """
+    if username:
+        user = username.lower().replace(" ", "")
+        try:
+            get_user_credentials_database(username=user)
+            get_credentials_config_file(username=username)
+        except Exception:
+            logging.error(Exception)
+            return {404: Exception}
+    elif first_name and last_name:
+        try:
+            get_user_credentials_database(first_name=first_name, last_name=last_name)
+            get_credentials_config_file(first_name=first_name, last_name=last_name)
+        except Exception:
+            logging.error(Exception)
+            return {404: Exception}
+    else:
+        raise ValueError("Either username or first_name and last_name must be provided.")
+
+
+def add_user_credentials(first_name: str = "", last_name: str = "", username: str = ""):
+    """
+    Adds user credentials to the system.
+
+    Args:
+        first_name (str, optional): The first name of the user. Defaults to "".
+        last_name (str, optional): The last name of the user. Defaults to "".
+        username (str, optional): The username of the user. Defaults to "".
+
+    Returns:
+        str: The result of adding user credentials.
+
+    Raises:
+        ValueError: If neither the username nor the first_name and last_name are provided.
+    """
+    if username:
+        user = username.lower().replace(" ", "")
+        try:
+            get_user_credentials_database(username=user)
+            get_credentials_config_file(username=username)
+        except Exception:
+            logging.error(Exception)
+            return {404: Exception}
+    elif first_name and last_name:
+        try:
+            get_user_credentials_database(first_name=first_name, last_name=last_name)
+            get_credentials_config_file(first_name=first_name, last_name=last_name)
+        except Exception:
+            logging.error(Exception)
+            return {404: Exception}
+    else:
+        raise ValueError("Either username or first_name and last_name must be provided.")
+
+
+def update_user_credentials(first_name: str = "", last_name: str = "", username: str = ""):
+    """
+    Updates the user's credentials in the system.
+
+    Args:
+        first_name (str, optional): The user's first name. Defaults to "".
+        last_name (str, optional): The user's last name. Defaults to "".
+        username (str, optional): The user's username. Defaults to "".
+
+    Raises:
+        Exception: If an error occurs while updating the user's credentials.
+        ValueError: If either `username` or `first_name` and `last_name` are not provided.
+
+    Returns:
+        None
+    """
+    if username:
+        user = username.lower().replace(" ", "")
+        try:
+            update_user_credentials_database(username=user)
+            update_user_credentials_config_file(username=username)
+        except Exception:
+            logging.error(Exception)
+            return {404: Exception}
+    elif first_name and last_name:
+        try:
+            update_user_credentials_database(first_name=first_name, last_name=last_name)
+            update_user_credentials_config_file(first_name=first_name, last_name=last_name)
+        except Exception:
+            logging.error(Exception)
+            return {404: Exception}
+    else:
+        raise ValueError("Either username or first_name and last_name must be provided.")
+
+
+def delete_user_credentials(first_name: str = "", last_name: str = "", username: str = ""):
+    """
+    Deletes user credentials from the config file and the database.
+
+    Args:
+        first_name (str): The first name of the user. Defaults to an empty string.
+        last_name (str): The last name of the user. Defaults to an empty string.
+        username (str): The username of the user. Defaults to an empty string.
+
+    Raises:
+        Exception: If an error occurs while deleting the user credentials.
+        ValueError: If neither username nor first_name and last_name are provided.
+    """
+    if username:
+        user = username.lower().replace(" ", "")
+        try:
+            delete_user_credentials_database(username=user)
+            delete_user_credentials_config_file(username=username)
+        except Exception:
+            logging.error(Exception)
+            return {404: Exception}
+    elif first_name and last_name:
+        try:
+            delete_user_credentials_database(first_name=first_name, last_name=last_name)
+            delete_user_credentials_config_file(first_name=first_name, last_name=last_name)
+        except Exception:
+            logging.error(Exception)
+            return {404: Exception}
+    else:
+        raise ValueError("Either username or first_name and last_name must be provided.")
 
 
 if __name__ == "__main__":

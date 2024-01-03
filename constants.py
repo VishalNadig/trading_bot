@@ -1,6 +1,25 @@
+"""All constants used in the program."""
+from datetime import datetime
+
+import yaml
 from tradingview_ta import Interval
 
-INITIAL_INVESTMENT = 0.016  # BTC
+from paths import paths
+
+ORDER_HISTORY_FILE = paths.ORDER_HISTORY_FILE
+LOGFILE = paths.LOGFILE
+TODAY = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
+CONFIG_FILE = paths.CONFIG_FILE
+MARKET_DATA_DIRECTORY = paths.MARKET_DATA_DIRECTORY
+with open(CONFIG_FILE) as file:
+    CONFIG = yaml.safe_load(file)
+USER = CONFIG["database_creds"]["CONNECTION_2"]["USER"]
+PASSWORD = CONFIG["database_creds"]["CONNECTION_2"]["PASSWORD"]
+HOSTNAME = CONFIG["database_creds"]["CONNECTION_2"]["HOSTNAME"]
+DATABASE = CONFIG["database_creds"]["DATABASE_1"]["NAME"]
+PORT = CONFIG["database_creds"]["CONNECTION_2"]["PORT"]
+URL = f"mysql+pymysql://{USER}:{PASSWORD}@{HOSTNAME}:{PORT}/{DATABASE}"
+INITIAL_INVESTMENT = 0.024  # BTC
 SCREENER_LIST = ["India", "Crypto"]
 API_DICTS = {
     "coindcx": "https://api.coindcx.com/exchange/ticker",
@@ -41,6 +60,37 @@ URL_DICT = {
     "LEND_ORDERS_URL": "https://api.coindcx.com/exchange/v1/funding/lend",
     "SETTLE_ORDERS_URL": "https://api.coindcx.com/exchange/v1/funding/settle",
     "FETCH_LEND_ORDERS_URL": "https://api.coindcx.com/exchange/v1/funding/fetch_orders",
+    "COINMARKETCAP_URL": {
+        "URL": "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest",
+        "parameters": {
+            "start": 1,
+            "limit": 5000,
+            "convert": "USD",
+            "headers": {
+                "Accepts": "application/json",
+                "X-CMC_PRO_API_KEY": CONFIG["coinmarketcap_api_key"],
+            },
+        },
+    },
+    "COINMARKETCAP_CATEGORIES": {
+        "URL": "https://pro-api.coinmarketcap.com/v1/cryptocurrency/categories",
+        "parameters": {
+            "start": 1,
+            "limit": 5000,
+        },
+        "headers": {
+            "Accepts": "application/json",
+            "X-CMC_PRO_API_KEY": CONFIG["coinmarketcap_api_key"],
+        },
+    },
+    "COINMARKETCAP_CATEGORY": {
+        "URL": "https://pro-api.coinmarketcap.com/v1/cryptocurrency/category",
+        "parameters": {"start": 1, "limit": 1000, "id": "6051a80866fc1b42617d6da1"},
+        "headers": {
+            "Accepts": "application/json",
+            "X-CMC_PRO_API_KEY": CONFIG["coinmarketcap_api_key"],
+        },
+    },
 }
 
 REMOVE_CURRENCIES = {

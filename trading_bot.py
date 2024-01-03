@@ -17,34 +17,30 @@ from matplotlib import pyplot
 from tradingview_ta import TA_Handler
 
 import constants
-import database_handler
 import trading_bot_auth
-from paths import paths
 
 # TODO: Encrypt regardless of where the keys are coming from.
 
 PARSER = argparse.ArgumentParser()
-CONFIG_FILE = paths.CONFIG_FILE
-ORDER_HISTORY_FILE = paths.ORDER_HISTORY_FILE
-LOGFILE = paths.LOGFILE
-TODAY = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
+CONFIG = constants.CONFIG
+ORDER_HISTORY_FILE = constants.ORDER_HISTORY_FILE
+LOGFILE = constants.LOGFILE
+TODAY = constants.TODAY
 SCREENER_LIST = constants.SCREENER_LIST
 API_DICTS = constants.API_DICTS
 INTERVAL_DICT = constants.INTERVAL_DICT
 URL_DICT = constants.URL_DICT
 REMOVE_CURRENCIES = constants.REMOVE_CURRENCIES
 
+with open(constants.CONFIG_FILE) as file:
+    CONFIG = yaml.safe_load(file)
 
 logging.basicConfig(
     level=logging.INFO,
     filemode="a",
-    filename=paths.LOGFILE,
+    filename=constants.LOGFILE,
     format="%(asctime)s;%(levelname)s;%(message)s",
 )
-
-
-with open(CONFIG_FILE, "r+", encoding="utf-8") as file:
-    CONFIG = yaml.safe_load(file)
 
 
 def get_keys(first_name: str = "", last_name: str = "", username: str = "") -> tuple:
@@ -58,20 +54,13 @@ def get_keys(first_name: str = "", last_name: str = "", username: str = "") -> t
     Returns:
         tuple: The API key and the secret key.
     """
-    # if first_name and last_name != "":
-    #     username = first_name + last_name
-    # else:
-    #     username = username.lower()
-    #     username = username.replace(" ", "")
-    # api_key = CONFIG["trading"]["accounts"][username]["api_key"]
-    # secret_key = CONFIG["trading"]["accounts"][username]["secret_key"]
-    # return api_key, secret_key
     return trading_bot_auth.get_credentials_config_file(
         first_name=first_name, last_name=last_name, username=username
     )
 
 
 def add_keys(
+    username: str = "",
     first_name: str = "",
     last_name: str = "",
     api_key: str = "",
@@ -87,26 +76,8 @@ def add_keys(
         api_key (str, optional): API key of the username.
         secret_key (str, optional): API secret of the username.
     """
-    # username = first_name + last_name
-    # username = username.lower()
-    # username = username.replace(" ", "")
-    # dict_update = CONFIG
-    # dict_dump = {
-    #     "username": first_name.title() + last_name.title(),
-    #     "email": email,
-    #     "api_key": api_key,
-    #     "secret_key": secret_key,
-    #     "google_auth_key": google_auth_key,
-    # }
-
-    # if username not in dict_update["trading"]["accounts"]:
-    #     dict_update["trading"]["accounts"][username] = dict_dump
-    #     with open(CONFIG_FILE, "w", encoding="utf-8") as file:
-    #         yaml.safe_dump(dict_update, file)
-    #     return {200: "User added!"}
-    # else:
-    #     return {404: "Error username already present!"}
-    return trading_bot_auth.add_keys_config_file(
+    return trading_bot_auth.add_user_credentials_config_file(
+        username=username,
         first_name=first_name,
         last_name=last_name,
         api_key=api_key,
@@ -117,13 +88,14 @@ def add_keys(
 
 
 def update_keys(
+    username: str = "",
     first_name: str = "",
     last_name: str = "",
     api_key: str = "",
     secret_key: str = "",
     email: str = "",
     google_auth_key: str = "",
-):
+) -> dict:
     """
     Updates the keys for a username in the trading accounts.
 
@@ -140,25 +112,8 @@ def update_keys(
         If the username is not present, returns {404: "Error username not present!"}.
         If the username is updated successfully, returns {200: "User updated!"}.
     """
-    # username = first_name + last_name
-    # username = username.lower()
-    # username = username.replace(" ", "")
-    # dict_update = CONFIG
-    # dict_dump = {
-    #     "username": first_name.title() + last_name.title(),
-    #     "email": email,
-    #     "api_key": api_key,
-    #     "secret_key": secret_key,
-    #     "google_auth_key": google_auth_key,
-    # }
-    # if username not in dict_update["trading"]["accounts"]:
-    #     return {404: "Error username not present!"}
-    # else:
-    #     dict_update["trading"]["accounts"][username] = dict_dump
-    #     with open(CONFIG_FILE, "w", encoding="utf-8") as file:
-    #         yaml.safe_dump(dict_update, file)
-    #     return {200: "User updated!"}
-    return trading_bot_auth.update_keys_config_file(
+    return trading_bot_auth.update_user_credentials_config_file(
+        username=username,
         first_name=first_name,
         last_name=last_name,
         api_key=api_key,
@@ -168,7 +123,7 @@ def update_keys(
     )
 
 
-def delete_keys(first_name: str, last_name: str, username: str):
+def delete_keys(first_name: str, last_name: str, username: str) -> dict:
     """
     Delete the keys for a specific username in the trading bot configuration file.
 
@@ -180,17 +135,18 @@ def delete_keys(first_name: str, last_name: str, username: str):
     Returns:
         None
     """
-    return trading_bot_auth.delete_keys_config_file(
+    return trading_bot_auth.delete_user_credentials_config_file(
         first_name=first_name, last_name=last_name, username=username
     )
 
 
-def get_ticker(coin_1: str = "BTC", coin_2: str = "USDT") -> dict:
+def get_ticker(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False) -> pd.DataFrame:
     """Get the ticker details of the coin
 
     Args:
         coin_1 (str, optional): The coin to get the ticker details of. Defaults to "BTC".
         coin_2 (str, optional): The coin against which to get the ticker details of. Defaults to "USDT".
+        all_coins (bool, optional): Whether to get the ticker details of all the coins. Defaults to False.
 
     Returns:
         dict: The dictionary of the coins details
@@ -199,21 +155,24 @@ def get_ticker(coin_1: str = "BTC", coin_2: str = "USDT") -> dict:
     response = requests.get(url)
     data = response.json()
     coins_dictionary = {}
-    for coins in data:
-        if coins["market"] == coin_1 + coin_2:
-            coins["unix_timestamp"] = coins["timestamp"]
-            coins["timestamp"] = datetime.fromtimestamp(coins["timestamp"]).strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
-            return coins
+    if all_coins:
+        ...
+    else:
+        for coins in data:
+            if coins["market"] == coin_1 + coin_2:
+                coins["unix_timestamp"] = coins["timestamp"]
+                coins["timestamp"] = datetime.fromtimestamp(coins["timestamp"]).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+                return pd.DataFrame.from_dict([coins])
 
 
-def get_market_data(currencies_to_include: list = []) -> dict:
+def get_market_data(save_dataframe: bool = False) -> pd.DataFrame:
     # TODO: Add Currencies to include feature
     """Get the market data of all coins in the market currently.
 
     Args:
-        ticker (str, optional): The coin to get the market data of. Defaults to "BTCUSDT".
+        save_dataframe (bool, optional): Whether to save the dataframe. Defaults to False.
 
     Returns:
         dict: The dictionary of the coins market data
@@ -234,14 +193,22 @@ def get_market_data(currencies_to_include: list = []) -> dict:
     dataframe["timestamp"] = pd.to_datetime(dataframe["timestamp"], unit="s") - timedelta(
         hours=7, minutes=0
     )
-    dataframe.to_csv(
-        rf"C:\Users\nadig\git\crypto_market_data\{datetime.now().strftime('%Y-%m-%d')}_market_data.csv"
-    )
+    if save_dataframe:
+        dataframe.to_csv(
+            rf"C:\Users\nadig\git\crypto_market_data\{datetime.now().strftime('%Y-%m-%d')}_market_data.csv"
+        )
+        return dataframe
+    else:
+        return dataframe
 
 
 def get_markets_details(
-    coin_1: str = "", coin_2: str = "", coins_list: list = [], all_coins: bool = False
-) -> dict:
+    coin_1: str = "",
+    coin_2: str = "",
+    coins_list: list = [],
+    all_coins: bool = False,
+    save_dataframe: bool = False,
+) -> pd.DataFrame:
     """Get the market details of the coins listed on the exchange. This includes the max leverage of the coin, the market it trades in, the min quantity to place an order, the max quantity to place an order.
 
     Args:
@@ -255,13 +222,21 @@ def get_markets_details(
     url = URL_DICT["MARKET_DETAILS_URL"]
     response = requests.get(url)
     data = response.json()
+    # print(data)
     coins_dictionary = {}
 
     if all_coins:
         for coins in data:
             if coin_2 in coins["symbol"]:
                 coins_list.append(coins)
-        return coins_list
+        if save_dataframe:
+            pd.DataFrame.from_dict(coins_list).to_csv(
+                os.path.join(
+                    constants.MARKET_DATA_DIRECTORY,
+                    f"{datetime.now().strftime('%Y-%m-%d')}_market_details.csv",
+                )
+            )
+        return pd.DataFrame.from_dict(coins_list)
     elif len(coins_list) == 0:
         for coins in data:
             if coins["symbol"] == coin_1 + coin_2:
@@ -270,7 +245,15 @@ def get_markets_details(
             for coins in data:
                 if coins["symbol"] == coin + "USDT":
                     coins_dictionary[coins["symbol"]] = coins
-        return coins_dictionary
+        # print(coins_dictionary)
+        if save_dataframe:
+            pd.DataFrame.from_dict(coins_list).to_csv(
+                os.path.join(
+                    constants.MARKET_DATA_DIRECTORY,
+                    f"{datetime.now().strftime('%Y-%m-%d')}_market_details.csv",
+                )
+            )
+        return pd.DataFrame.from_dict(coins_dictionary)
 
 
 def place_buy_limit_order(
@@ -323,7 +306,7 @@ def place_buy_limit_order(
                 TODAY,
             ]
         )
-    logging.info("Written to order history file!")
+    logging.info(f"Bought {total_quantity} {coin_1+coin_2} at {price}")
     file.close()
     return data
 
@@ -381,7 +364,7 @@ def place_sell_limit_order(
                 TODAY,
             ]
         )
-    logging.info("Written to order history file!")
+    logging.info(f"Sold {total_quantity} {coin_1+coin_2} at {price}")
     file.close()
 
 
@@ -435,7 +418,7 @@ def place_market_buy_order(
                 TODAY,
             ]
         )
-        logging.info("Written to file")
+        logging.info(f"Market bought {total_quantity} {coin_1+coin_2}")
     return data
 
 
@@ -488,7 +471,7 @@ def place_market_sell_order(
                 TODAY,
             ]
         )
-    logging.info("Written to order history file!")
+    logging.info(f"Market sold {total_quantity} {coin_1+coin_2}")
     file.close()
     return response.json()
 
@@ -750,9 +733,8 @@ def bot_trader(
     open_position = False
     min_order_value = 0.0001
     order_size = 0
-    count = 0
     logging.info(f"""{coin_1}{coin_2} Bot Started for {username} at {datetime.now()}!""")
-    indicator_data_ = indicator_data(
+    indicator_data_ = get_indicator_data(
         coin_1=coin_1, coin_2=coin_2, market=market, screener_name=screener_name, interval=interval
     )
     rsi = indicator_data_["RSI"]
@@ -766,7 +748,7 @@ def bot_trader(
     while no_of_trades <= 100:
         try:
             data = get_candles(coin_1=coin_1, coin_2=coin_2)
-            indicator_data_ = indicator_data(
+            indicator_data_ = get_indicator_data(
                 coin_1=coin_1,
                 coin_2=coin_2,
                 market=market,
@@ -778,7 +760,7 @@ def bot_trader(
             logging.error(exception)
             time.sleep(60)
             data = get_candles(coin_1=coin_1, coin_2=coin_2)
-            indicator_data_ = indicator_data(
+            indicator_data_ = get_indicator_data(
                 coin_1=coin_1,
                 coin_2=coin_2,
                 market=market,
@@ -916,6 +898,7 @@ def get_candles(
     coin_2: str = "USDT",
     limit: int = 100,
     interval: str = "4h",
+    save_dataframe: bool = False,
 ) -> pd.DataFrame:
     """Get historical candle data of a cryptocurrency for price prediction and analysis.
 
@@ -928,25 +911,34 @@ def get_candles(
     Returns:
         pd.DataFrame: The historical candle data of the coin market pair.
     """
-    url = (
-        URL_DICT["CANDLES_URL"]
-        + f"?pair={get_markets_details(coin_1=coin_1,coin_2=coin_2)['pair']}&interval={interval}&limit={limit}"
-    )
-    response = requests.get(url, timeout=60)
-    data = response.json()
-    dataframe = pd.DataFrame.from_dict(data)
-    # current_time = datetime.datetime.fromtimestamp(unix_timestamp)
-    dataframe["time"] = pd.to_datetime(dataframe["time"], unit="ms")
-    return dataframe
+    try:
+        url = (
+            URL_DICT["CANDLES_URL"]
+            + f"?pair={get_markets_details(coin_1=coin_1,coin_2=coin_2)['pair']}&interval={interval}&limit={limit}"
+        )
+        response = requests.get(url, timeout=60)
+        data = response.json()
+        dataframe = pd.DataFrame.from_dict(data)
+        dataframe["time"] = pd.to_datetime(dataframe["time"], unit="ms")
+
+        if save_dataframe:
+            dataframe.to_csv(f"{coin_1}_{coin_2}_candles.csv")
+            return dataframe
+        else:
+            return dataframe
+    except Exception as e:
+        print(e)
+        logging.info(f"Error in get_candles for {coin_1}: {e}")
+        pass
 
 
-def indicator_data(
+def get_indicator_data(
     coin_1: str = "BTC",
     coin_2: str = "USDT",
     market: str = "Binance",
     screener_name: str = "Crypto",
     interval: str = "4h",
-) -> list:
+) -> dict:
     """Get complete indicator data from Trading View.
 
     Args:
@@ -958,14 +950,17 @@ def indicator_data(
     Returns:
         list: The indicator data for the market pair in an exchange.
     """
-
-    trading_pair = TA_Handler(
-        symbol=f"{coin_1+coin_2}",
-        screener=f"{screener_name}",
-        exchange=f"{market}",
-        interval=INTERVAL_DICT[str(interval)],
-    )
-    return trading_pair.get_analysis().indicators
+    try:
+        trading_pair = TA_Handler(
+            symbol=f"{coin_1+coin_2}",
+            screener=f"{screener_name}",
+            exchange=f"{market}",
+            interval=INTERVAL_DICT[str(interval)],
+        )
+        return trading_pair.get_analysis().indicators
+    except Exception as e:
+        logging.info(f"Error in get_indicator_data for {coin_1}: {e}")
+        pass
 
 
 def auto_trader(username: str = CONFIG["Owner"]["alt_username"]):
@@ -987,7 +982,7 @@ def auto_trader(username: str = CONFIG["Owner"]["alt_username"]):
                 and float(coins_currently_held[coins]["Balance"]) > 1.0
             ):
                 logging.info(f"Auto trader has the following {(coins)} in hand.")
-                indi_data = indicator_data(coin_1=coins)
+                indi_data = get_indicator_data(coin_1=coins)
                 if indi_data["RSI"] > 70:
                     logging.info(f"Selling {coins}")
                     send_mail(f"Sold {coins}", receiver="nadigvishal@gmail.com")
@@ -1092,7 +1087,7 @@ def send_mail(message: str, receiver: str = CONFIG["Owner"]["alt_username"]) -> 
     smtp_object.quit()
 
 
-def price_tracker(
+def price_tracker_mail(
     coin_1: str = "BTC",
     coin_2: str = "USDT",
     price: float = 0.0,
@@ -1143,7 +1138,7 @@ def buy_sell_recommendation(
             - 200: The RSI value of the first cryptocurrency is less than 30 and hence is in a BUY zone.
     """
     try:
-        indicator = indicator_data(
+        indicator = get_indicator_data(
             coin_1=coin_1,
             coin_2=coin_2,
             market=market,
@@ -1175,7 +1170,7 @@ def fetch_lend_orders(username: str = CONFIG["Owner"]["alt_username"]):
     Returns:
         dict: A dictionary containing the list of lend orders.
     """
-    fetch_lend_orders_url = constants["FETCH_LEND_ORDERS_URL"]
+    fetch_lend_orders_url = constants.URL_DICT["FETCH_LEND_ORDERS_URL"]
     secret_bytes = bytes(get_keys(username=username)[1], encoding="utf-8")
     time_stamp = int(round(time.time() * 1000))
     body = {"timestamp": time_stamp}
@@ -1203,7 +1198,7 @@ def lend_order(
     Returns:
         None
     """
-    lend_url = constants["LEND_ORDERS_URL"]
+    lend_url = constants["URL_DICT"]["LEND_ORDERS_URL"]
     secret_bytes = bytes(get_keys(username=username)[1], encoding="utf-8")
     time_stamp = int(round(time.time() * 1000))
     body = {"timestamp": time_stamp}
@@ -1228,7 +1223,7 @@ def settle_orders(username: str = CONFIG["Owner"]["alt_username"]):
     Returns:
         dict: A dictionary containing the list of settle orders.
     """
-    settle_orders_url = constants["SETTLE_ORDERS_URL"]
+    settle_orders_url = constants["URL_DICT"]["SETTLE_ORDERS_URL"]
     secret_bytes = bytes(get_keys(username=username)[1], encoding="utf-8")
     time_stamp = int(round(time.time() * 1000))
     body = {"timestamp": time_stamp}
@@ -1243,42 +1238,31 @@ def settle_orders(username: str = CONFIG["Owner"]["alt_username"]):
     return response.json()
 
 
-def get_market_cap(coin_name: str = "BTC"):
-    """
-    Retrieves the market capitalization for a given cryptocurrency.
-
-    Args:
-        coin_name (str): The name of the cryptocurrency. Defaults to "BTC".
-
-    Returns:
-        None
-    """
-    pass
-
-
-def price_tracker(username: str = CONFIG["trading"]["accounts"]["vishalnadigofficial"]):
+def crypto_price_tracker(save_dataframe: bool = False):
     """
     A function that iterates over all files in the current directory and prints the names of the files that have a '.json' extension and contain today's date in the file name.
 
     Parameters:
-        None
+        username (str): The username of the user. Defaults to "vishalnadigofficial".
 
     Returns:
         None
     """
-    get_market_data()
+    get_market_data(save_dataframe=save_dataframe)
 
     initial_date = "2023-12-20"
     current_date = datetime.now().strftime("%Y-%m-%d")
-    base_directory = r"C:\Users\nadig\git\crypto_market_data"
-    initial_market_data_file = os.path.join(base_directory, f"{initial_date}_market_data.csv")
-
-    for file in os.listdir(base_directory):
+    market_data_directory = constants.MARKET_DATA_DIRECTORY
+    initial_market_data_file = os.path.join(
+        market_data_directory, f"{initial_date}_market_data.csv"
+    )
+    for file in os.listdir(market_data_directory):
         if file.endswith(".csv") and file.startswith(current_date):
-            current_market_data_file = os.path.join(base_directory, file)
+            current_market_data_file = os.path.join(market_data_directory, file)
             initial_market_data = pd.read_csv(initial_market_data_file)
             latest_market_data = pd.read_csv(current_market_data_file)
-
+        else:
+            pass
     date_difference = datetime.strptime(current_date, "%Y-%m-%d") - datetime.strptime(
         initial_date, "%Y-%m-%d"
     )
@@ -1299,7 +1283,7 @@ def price_tracker(username: str = CONFIG["trading"]["accounts"]["vishalnadigoffi
             change_df[coin] = {
                 f"Week {week_number} Price": initial_price,
                 f"Week {week_number} Current Price": current_price.values[0],
-                f"Week {week_number} Change": f"{change} %",
+                f"Week {week_number} Change": f"{change}",
             }
 
     change_df = pd.DataFrame(change_df).T.join(initial_market_data["market"])
@@ -1308,11 +1292,352 @@ def price_tracker(username: str = CONFIG["trading"]["accounts"]["vishalnadigoffi
     initial_market_data = initial_market_data.join(
         price_change, on="market", how="left", rsuffix="change"
     )
-    initial_market_data.to_csv(os.path.join(base_directory, f"{file_name}.csv"), index=False)
+    if save_dataframe:
+        initial_market_data.to_csv(
+            os.path.join(market_data_directory, f"{file_name}.csv"), index=False
+        )
+        return {200: f"Created {file_name} successfully."}
+    else:
+        return initial_market_data
+
+
+def get_price_of_coin_on_date(
+    coin_1: str = "",
+    coin_2: str = "USDT",
+    date: str = "",
+    number_of_days: int = 0,
+    get_dataframe: bool = False,
+    save_dataframe: bool = False,
+    all_coins: bool = False,
+):
+    """
+    Get the price of a coin on a specific date.
+
+    Args:
+        coin_1 (str): The symbol of the first coin.
+        coin_2 (str): The symbol of the second coin.
+        date (str): The date in DD-MM-YYYY format for which to retrieve the price.
+
+    Returns:
+        dict: A dictionary containing the price of the coin on the specified date.
+    """
+    print("Getting price of coin on date")
+    if date and number_of_days:
+        return {404: "Please provide either a date or number of days."}
+    elif date or number_of_days:
+        if all_coins:
+            print("Getting all coins")
+            complete_dataframe = pd.DataFrame()
+            dataframe = get_market_data()
+            date_required = datetime.now() - datetime.strptime(date, "%d-%m-%Y")
+            count = 1
+            for coins in dataframe["market"].values:
+                if "USDT" in coins:
+                    coin_1 = coins.split("USDT")[0]
+                    coin_2 = "USDT"
+                elif "BTC" in coins:
+                    coin_1 = coins.split("BTC")[0]
+                    coin_2 = "BTC"
+                elif "VRA" in coins:
+                    coin_1 = coins.split("VRA")[0]
+                    coin_2 = coins.split("VRA")[1]
+                try:
+                    candle_dataframe = get_candles(
+                        coin_1=coin_1, coin_2=coin_2, interval="1d", limit=date_required.days
+                    )
+                    complete_dataframe[count] = {
+                        "market": coins,
+                        "close": candle_dataframe["close"].values[candle_dataframe["time"] == date][
+                            0
+                        ],
+                        "time": candle_dataframe["time"].values[candle_dataframe["time"] == date][
+                            0
+                        ],
+                    }
+                    count += 1
+
+                except Exception as e:
+                    pass
+            complete_dataframe.T.to_csv(
+                os.path.join(constants.MARKET_DATA_DIRECTORY, f"market_data_{date}.csv"), index=True
+            )
+        else:
+            try:
+                date_required = datetime.now() - datetime.strptime(date, "%d-%m-%Y")
+                dataframe = get_candles(
+                    coin_1=coin_1, coin_2=coin_2, interval="1d", limit=date_required.days
+                )
+                if save_dataframe:
+                    dataframe.to_csv(f"{coin_1}{coin_2}_{date}.csv", index=False)
+                if get_dataframe:
+                    return dataframe
+                return dataframe.loc[dataframe["time"] == date, "close"].values[0]
+            except ValueError:
+                return {404: "Invalid date format. Please use the format DD-MM-YYYY."}
+    else:
+        return {404: "Please provide either a date or a number of days."}
+
+
+def get_market_indicator(
+    coin_1: str = "BTC",
+    coin_2: str = "USDT",
+    market: str = "Binance",
+    screener_name: str = "Crypto",
+    interval: str = "4h",
+    all_coins: bool = False,
+    save_dataframe: bool = False,
+):
+    """
+    Retrieves market indicator data for a specified cryptocurrency pair.
+
+    Parameters:
+        coin_1 (str): The first cryptocurrency in the pair. Default is "BTC".
+        coin_2 (str): The second cryptocurrency in the pair. Default is "USDT".
+        market (str): The market where the indicator data will be retrieved from. Default is "Binance".
+        screener_name (str): The name of the screener used to filter the indicator data. Default is "Crypto".
+        interval (str): The time interval for the indicator data. Default is "4h".
+
+    Returns:
+        None
+    """
+    count = 1
+    coins_dictionary = {}
+    dataframe = pd.DataFrame()
+    if all_coins:
+        if os.path.exists(rf"{constants.MARKET_DATA_DIRECTORY}\2023-12-20_market_data.csv"):
+            data = pd.read_csv(rf"{constants.MARKET_DATA_DIRECTORY}\2023-12-20_market_data.csv")
+        else:
+            url = URL_DICT["MARKET_DATA_URL"]
+            response = requests.get(url)
+            data = response.json()
+        coins_dictionary = data["market"].to_dict()
+        for coin in coins_dictionary.values():
+            if "USDT" in coin:
+                coin_1 = coin.split("USDT")[0]
+                coin_2 = "USDT"
+            elif "BTC" in coin:
+                coin_1 = coin.split("BTC")[0]
+                coin_2 = "BTC"
+            elif "USDC" in coin:
+                coin_1 = coin.split("USDC")[0]
+                coin_2 = "USDC"
+            ticker_data = get_ticker(coin_1=coin_1, coin_2=coin_2)
+            candle_data = get_candles(coin_1=coin_1, coin_2=coin_2, interval="1d", limit=1)
+            try:
+                indicator_data_ = get_indicator_data(
+                    coin_1=coin_1,
+                    coin_2=coin_2,
+                    market=market,
+                    screener_name=screener_name,
+                    interval=interval,
+                )
+                supports = [
+                    indicator_data_["Pivot.M.Fibonacci.S1"],
+                    indicator_data_["Pivot.M.Fibonacci.S2"],
+                    indicator_data_["Pivot.M.Fibonacci.S3"],
+                ]
+                resistances = [
+                    indicator_data_["Pivot.M.Fibonacci.R1"],
+                    indicator_data_["Pivot.M.Fibonacci.R2"],
+                    indicator_data_["Pivot.M.Fibonacci.R3"],
+                ]
+                dataframe[count] = {
+                    "market": coin_1 + coin_2,
+                    "RSI": indicator_data_["RSI"],
+                    "EMA10": indicator_data_["EMA10"],
+                    "EMA50": indicator_data_["EMA50"],
+                    "EMA200": indicator_data_["EMA200"],
+                    "Stoch.K": indicator_data_["Stoch.K"],
+                    "Stoch.D": indicator_data_["Stoch.D"],
+                    "MACD.macd": indicator_data_["MACD.macd"],
+                    "MACD.signal": indicator_data_["MACD.signal"],
+                    "Pivot": indicator_data_["Pivot.M.Fibonacci.Middle"],
+                    "Supports": supports,
+                    "Resistances": resistances,
+                    "open": candle_data["open"],
+                    "high": candle_data["high"],
+                    "low": candle_data["low"],
+                    "close": candle_data["close"],
+                    "Current Price": ticker_data["last_price"],
+                    "change_24h": ticker_data["change_24_hour"],
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                }
+            except Exception as e:
+                pass
+            count += 1
+        dataframe = dataframe.T
+        if save_dataframe:
+            dataframe.to_csv(
+                rf"{constants.MARKET_DATA_DIRECTORY}\market_indicator_data.csv", index=False
+            )
+            return dataframe
+        return dataframe
+    else:
+        ticker_data = get_ticker(coin_1=coin_1, coin_2=coin_2)
+        candle_data = get_candles(coin_1=coin_1, coin_2=coin_2, interval="1d", limit=1)
+        indicator_data_ = get_indicator_data(
+            coin_1=coin_1,
+            coin_2=coin_2,
+            market=market,
+            screener_name=screener_name,
+            interval=interval,
+        )
+        supports = [
+            indicator_data_["Pivot.M.Fibonacci.S1"],
+            indicator_data_["Pivot.M.Fibonacci.S2"],
+            indicator_data_["Pivot.M.Fibonacci.S3"],
+        ]
+        resistances = [
+            indicator_data_["Pivot.M.Fibonacci.R1"],
+            indicator_data_["Pivot.M.Fibonacci.R2"],
+            indicator_data_["Pivot.M.Fibonacci.R3"],
+        ]
+        dataframe[count] = {
+            "market": coin_1 + coin_2,
+            "RSI": indicator_data_["RSI"],
+            "EMA10": indicator_data_["EMA10"],
+            "EMA50": indicator_data_["EMA50"],
+            "EMA200": indicator_data_["EMA200"],
+            "Stoch.K": indicator_data_["Stoch.K"],
+            "Stoch.D": indicator_data_["Stoch.D"],
+            "MACD.macd": indicator_data_["MACD.macd"],
+            "MACD.signal": indicator_data_["MACD.signal"],
+            "Pivot": indicator_data_["Pivot.M.Fibonacci.Middle"],
+            "Supports": supports,
+            "Resistances": resistances,
+            "open": candle_data["open"],
+            "high": candle_data["high"],
+            "low": candle_data["low"],
+            "close": candle_data["close"],
+            "Current Price": ticker_data["last_price"],
+            "change_24h": ticker_data["change_24_hour"],
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+
+        if save_dataframe:
+            dataframe = pd.DataFrame(dataframe).to_csv(
+                rf"{constants.MARKET_DATA_DIRECTORY}\{coin_1}{coin_2}_indicator_data.csv",
+                index=False,
+            )
+            return dataframe
+        return dataframe
+
+
+def get_price_difference(coin: str = ""):
+    oct_dataframe = pd.read_csv(rf"{constants.MARKET_DATA_DIRECTORY}\market_data_13-10-2023.csv")
+
+    if coin:
+        oct_dataframe = oct_dataframe.loc[oct_dataframe["market"].str.contains(coin + "USDT")]
+        current_price = get_ticker(coin_1=coin, coin_2="USDT")
+
+        oct_dataframe["current_price"] = current_price["last_price"].values[0]
+        oct_dataframe["price_change"] = (
+            float(oct_dataframe["current_price"].values[0])
+            - float(oct_dataframe["close"].values[0])
+        ) * 100.0
+        return oct_dataframe
+
+    return oct_dataframe
+
+
+def get_buy_suggestions(
+    full_dataframe: bool = False, save_dataframe: bool = False, number_of_coins: int = 10
+):
+    """
+    Generates a dataframe of buy suggestions based on the latest market data.
+
+    Parameters:
+        full_dataframe (bool): If True, returns the full dataframe of buy suggestions. Defaults to False.
+        save_dataframe (bool): If True, saves the buy suggestions dataframe to a CSV file. Defaults to False.
+        number_of_coins (int): The number of top coins to include in the buy suggestions dataframe. Defaults to 10.
+
+    Returns:
+        DataFrame: The buy suggestions dataframe.
+    """
+    initial_date = "2023-12-20"
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    market_data_directory = constants.MARKET_DATA_DIRECTORY
+    date_difference = datetime.strptime(current_date, "%Y-%m-%d") - datetime.strptime(
+        initial_date, "%Y-%m-%d"
+    )
+    week_number = date_difference // timedelta(days=7)
+    file_name = os.path.join(market_data_directory, f"week_{week_number}_change.csv")
+
+    if not os.path.exists(file_name):
+        crypto_price_tracker(save_dataframe=True)
+
+    latest_dataframe = pd.read_csv(file_name)
+
+    buy_dataframe = latest_dataframe.loc[latest_dataframe["Week 1 Change"] < 0].sort_values(
+        by="Week 1 Change", ascending=True
+    )
+    buy_dataframe = buy_dataframe[["market", "Week 1 Change"]]
+    buy_dataframe.columns = ["coin", "change"]
+    buy_dataframe.reset_index(drop=True, inplace=True)
+
+    if save_dataframe:
+        buy_dataframe.to_csv(rf"{constants.MARKET_DATA_DIRECTORY}\buy_suggestions.csv", index=False)
+        if full_dataframe:
+            return buy_dataframe
+        elif number_of_coins > 0:
+            return buy_dataframe.head(number_of_coins)
+        else:
+            return buy_dataframe.head(10)
+
+    return buy_dataframe.head(10)
+
+
+def get_weekly_portfolio_update(username: str = CONFIG["Owner"]["main_username"]):
+    """
+    Generates a weekly portfolio update for the user.
+
+    Parameters:
+        user (str): The username of the user. Defaults to "vishalnadigofficial".
+
+    Returns:
+        None
+    """
+    account_balance = get_account_balance(username=username)
+    send_mail("Your weekly portfolio update is: " + account_balance)
+
+
+def regular_updates(
+    all_coins: bool = False,
+    coin_list: list = [],
+    save_dataframe: bool = False,
+    interval: str = "4h",
+):
+    """
+    Generates regular updates for the user.
+
+    Parameters:
+        all_coins (bool): If True, generates updates for all the coins. Defaults to False.
+        coin_list (list): A list of coin symbols to generate updates for. Defaults to an empty list.
+        save_dataframe (bool): If True, saves the dataframe to a CSV file. Defaults to False.
+    """
+    pass
+    new_df = {}
+    if all_coins and len(coin_list) > 0:
+        return {404: "Error: all_coins and coin_list cannot be True at the same time."}
+    elif all_coins:
+        return crypto_price_tracker(save_dataframe=save_dataframe)
+    elif len(coin_list) > 0:
+        for coin in coin_list:
+            pass
 
 
 if __name__ == "__main__":
-    # get_market_data()
-    price_tracker()
+    # print(get_active_orders(username="vishalnadig"))
+    # print(get_market_data()['market'].values)
+    crypto_price_tracker(save_dataframe=True)  # Use this
+    # print(get_candles(coin_1="1000SAT", coin_2="USDT", interval="4h", limit=1))
+    # print(get_market_indicator(all_coins=True))
+    # print(get_indicator_data(coin_1="1000SATS", coin_2="USDT", market="Binance", screener_name="Crypto", interval="4h"))
+    # print(get_price_of_coin_on_date(date="13-10-2023", all_coins=True))
+    # print(fetch_lend_orders())
     # account_trade_history()
     # print(get_keys(username="vishalnadig"))
+    # print(get_markets_details(all_coins=True))
+    # get_price_difference("NEAR")
+    # print(get_buy_suggestions())
+    ...
