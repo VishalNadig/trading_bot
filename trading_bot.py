@@ -1599,7 +1599,6 @@ def regular_updates(
 def price_follower(coins_list, username=CONFIG["Owner"]["main_username"]):
     pass
 
-
 if __name__ == "__main__":
     # print(get_active_orders(username="vishalnadig"))
     # print(get_market_data()['market'].values)
@@ -1611,7 +1610,6 @@ if __name__ == "__main__":
     # print(fetch_lend_orders())
     # account_trade_history()
     # print(get_keys(username="vishalnadig"))
-    # print(get_markets_details(all_coins=True))
     # get_price_difference("NEAR")
     # print(get_buy_suggestions())
     ...
