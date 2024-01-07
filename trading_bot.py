@@ -1016,36 +1016,6 @@ def parser_activated_bot() -> None:
     )
 
 
-def get_rsi_signal(coin_1, coin_2, screener_name, market, interval):
-    """
-    Generates a signal based on the Relative Strength Index (RSI) indicator.
-
-    Args:
-        coin_1 (str): The first coin symbol.
-        coin_2 (str): The second coin symbol.
-        screener_name (str): The name of the screener.
-        market (str): The name of the market.
-        interval (str): The interval for calculating the RSI value.
-
-    Returns:
-        None
-    """
-    trading_pair = TA_Handler(
-        symbol=f"{coin_1+coin_2}",
-        screener=f"{screener_name}",
-        exchange=f"{market}",
-        interval="4h",
-    )
-    # Get RSI value for the last 14 periods on the daily timeframe
-    rsi = trading_pair.get_analysis().indicators["RSI"]
-
-    # Print BUY if RSI is below 30, SELL if RSI is above 70, otherwise do nothing
-    if rsi < 30:
-        return "BUY"
-    elif rsi > 70:
-        return "SELL"
-
-
 def plot_historical_data(
     coin_1: str = "BTC", coin_2: str = "USDT", interval: str = "1d", limit: int = 100
 ) -> pyplot:
@@ -1582,9 +1552,9 @@ def get_buy_suggestions(
         elif number_of_coins > 0:
             return buy_dataframe.head(number_of_coins)
         else:
-            return buy_dataframe.head(10)
+            return buy_dataframe.head(20)
 
-    return buy_dataframe.head(10)
+    return buy_dataframe.head(20)
 
 
 def get_weekly_portfolio_update(username: str = CONFIG["Owner"]["main_username"]):
@@ -1626,6 +1596,10 @@ def regular_updates(
             pass
 
 
+def price_follower(coins_list, username=CONFIG["Owner"]["main_username"]):
+    pass
+
+
 if __name__ == "__main__":
     # print(get_active_orders(username="vishalnadig"))
     # print(get_market_data()['market'].values)
@@ -1641,3 +1615,5 @@ if __name__ == "__main__":
     # get_price_difference("NEAR")
     # print(get_buy_suggestions())
     ...
+
+
