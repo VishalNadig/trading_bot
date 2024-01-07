@@ -1597,7 +1597,8 @@ def regular_updates(
 
 
 def price_follower(coins_list, username=CONFIG["Owner"]["main_username"]):
-    pass
+    account_balance = get_account_balance(username=username)
+    print(account_balance)
 
 if __name__ == "__main__":
     # print(get_active_orders(username="vishalnadig"))
