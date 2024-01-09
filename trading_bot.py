@@ -1259,13 +1259,14 @@ def crypto_price_tracker(save_dataframe: bool = False):
     initial_market_data_file = os.path.join(
         market_data_directory, f"{initial_date}_market_data.csv"
     )
-    for file in os.listdir(market_data_directory):
-        if file.endswith(".csv") and file.startswith(current_date):
-            current_market_data_file = os.path.join(market_data_directory, file)
-            initial_market_data = pd.read_csv(initial_market_data_file)
-            latest_market_data = pd.read_csv(current_market_data_file)
-        else:
-            get_price_of_coin_on_date(date="13-10-2023", save_dataframe = True, all_coins = True)
+    current_market_data_file = os.path.join(market_data_directory, file)
+    latest_market_data = pd.read_csv(current_market_data_file)
+    if os.path.isfile(initial_market_data_file):
+        initial_market_data = pd.read_csv(initial_market_data_file)
+    else:
+        get_price_of_coin_on_date(date=initial_date, save_dataframe=True, all_coins=True)
+        initial_market_data = pd.read_csv(initial_market_data_file)
+
     date_difference = datetime.strptime(current_date, "%Y-%m-%d") - datetime.strptime(
         initial_date, "%Y-%m-%d"
     )
@@ -1358,7 +1359,7 @@ def get_price_of_coin_on_date(
                 except Exception as e:
                     pass
             complete_dataframe.T.to_csv(
-                os.path.join(constants.MARKET_DATA_DIRECTORY, f"market_data_{date}.csv"), index=True
+                os.path.join(constants.MARKET_DATA_DIRECTORY, f"{date}_market_data.csv"), index=True
             )
         else:
             try:
