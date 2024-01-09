@@ -9,17 +9,18 @@ import os
 import smtplib
 import time
 from datetime import datetime, timedelta
-
 import pandas as pd
+
 import requests
 import yaml
 from matplotlib import pyplot
 from tradingview_ta import TA_Handler
-
 import constants
 import trading_bot_auth
+from paths import paths
 
 # TODO: Encrypt regardless of where the keys are coming from.
+# pd.options.display.float_format = '{:.0f}'.format
 
 PARSER = argparse.ArgumentParser()
 CONFIG = constants.CONFIG
@@ -43,6 +44,28 @@ logging.basicConfig(
 )
 
 
+def initialize():
+    if not os.path.exists(os.path.join(paths.HOME_DIRECTORY, paths.MARKET_DATA_DIRECTORY)):
+        logging.info(rf"{paths.MARKET_DATA_DIRECTORY} does not exist! Creating {paths.MARKET_DATA_DIRECTORY}")
+        os.mkdir(os.path.join(paths.HOME_DIRECTORY, paths.MARKET_DATA_DIRECTORY))
+    if not os.path.isfile(os.path.join(paths.HOME_DIRECTORY, paths.LOGFILE)):
+        logging.info(rf"{paths.LOGFILE} does not exist! Creating {paths.LOGFILE}")
+        with open(os.path.join(paths.HOME_DIRECTORY, paths.LOGFILE), "w") as file:
+            pass
+    if not os.path.isfile(os.path.join(paths.HOME_DIRECTORY, paths.CONFIG_FILE)):
+        logging.info(rf"{paths.CONFIG_FILE} does not exist! Creating {paths.CONFIG_FILE}")
+        with open(os.path.join(paths.HOME_DIRECTORY, paths.CONFIG_FILE), "w") as file:
+            pass
+    if not os.path.isfile(os.path.join(paths.MARKET_DATA_DIRECTORY, paths.ORDER_HISTORY_FILE)):
+        logging.info(rf"{paths.ORDER_HISTORY_FILE} does not exist! Creating {paths.ORDER_HISTORY_FILE}")
+        with open(os.path.join(paths.MARKET_DATA_DIRECTORY, paths.ORDER_HISTORY_FILE), "w") as file:
+            pass
+    if not os.path.isfile(os.path.join(paths.MARKET_DATA_DIRECTORY, paths.TRADING_BOT_ORDER_HISTORY_FILE)):
+        logging.info(rf"{paths.TRADING_BOT_ORDER_HISTORY_FILE} does not exist! Creating {paths.TRADING_BOT_ORDER_HISTORY_FILE}")
+        with open(os.path.join(paths.MARKET_DATA_DIRECTORY, paths.TRADING_BOT_ORDER_HISTORY_FILE), "w") as file:
+            pass
+
+
 def get_keys(first_name: str = "", last_name: str = "", username: str = "") -> tuple:
     """Get API key and secret key for the specified username. If username is not mentioned then, first name and last name of the username can be used to retrieve the keys.
 
@@ -54,7 +77,8 @@ def get_keys(first_name: str = "", last_name: str = "", username: str = "") -> t
     Returns:
         tuple: The API key and the secret key.
     """
-    return trading_bot_auth.get_credentials_config_file(
+    # print(trading_bot_auth.get_user_credentials(first_name=first_name, last_name=last_name, username=username))
+    return trading_bot_auth.get_user_credentials(
         first_name=first_name, last_name=last_name, username=username
     )
 
@@ -76,7 +100,7 @@ def add_keys(
         api_key (str, optional): API key of the username.
         secret_key (str, optional): API secret of the username.
     """
-    return trading_bot_auth.add_user_credentials_config_file(
+    return trading_bot_auth.add_user_credentials(
         username=username,
         first_name=first_name,
         last_name=last_name,
@@ -112,7 +136,7 @@ def update_keys(
         If the username is not present, returns {404: "Error username not present!"}.
         If the username is updated successfully, returns {200: "User updated!"}.
     """
-    return trading_bot_auth.update_user_credentials_config_file(
+    return trading_bot_auth.update_user_credentials(
         username=username,
         first_name=first_name,
         last_name=last_name,
@@ -135,7 +159,7 @@ def delete_keys(first_name: str, last_name: str, username: str) -> dict:
     Returns:
         None
     """
-    return trading_bot_auth.delete_user_credentials_config_file(
+    return trading_bot_auth.delete_user_credentials(
         first_name=first_name, last_name=last_name, username=username
     )
 
@@ -190,7 +214,7 @@ def get_market_data(save_dataframe: bool = False) -> pd.DataFrame:
             coins_dictionary[coins["market"]] = coins
     dataframe = pd.DataFrame(coins_dictionary).T
     dataframe = dataframe.sort_index(ascending=True, axis=0)
-    dataframe["timestamp"] = pd.to_datetime(dataframe["timestamp"], unit="s") - timedelta(
+    dataframe["timestamp"] = pd.to_datetime(dataframe["timestamp"], unit="ms") - timedelta(
         hours=7, minutes=0
     )
     if save_dataframe:
@@ -257,7 +281,7 @@ def get_markets_details(
 
 
 def place_buy_limit_order(
-    username: str = CONFIG["Owner"]["alt_username"],
+    username: str = CONFIG["Owner"]["main_username"],
     coin_1: str = "BTC",
     coin_2: str = "USDT",
     price: float = 0.023,
@@ -290,7 +314,7 @@ def place_buy_limit_order(
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(URL_DICT["NEW_ORDER_URL"], data=json_body, headers=headers)
-    if 401 in response.json().values():
+    if type(response.json) == dict and 401 in response.json().values():
         raise Exception("Unauthorized user credentials")
     data = response.json()
     logging.info(data)
@@ -312,7 +336,7 @@ def place_buy_limit_order(
 
 
 def place_sell_limit_order(
-    username: str = CONFIG["Owner"]["alt_username"],
+    username: str = CONFIG["Owner"]["main_username"],
     coin_1: str = "BTC",
     coin_2: str = "USDT",
     price: float = 0.25,
@@ -348,7 +372,7 @@ def place_sell_limit_order(
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(URL_DICT["NEW_ORDER_URL"], data=json_body, headers=headers)
-    if 401 in response.json().values():
+    if type(response.json) == dict and 401 in response.json().values():
         raise Exception("Unauthorized user credentials")
     data = response.json()
     logging.info(data)
@@ -369,7 +393,7 @@ def place_sell_limit_order(
 
 
 def place_market_buy_order(
-    username: str = CONFIG["Owner"]["alt_username"],
+    username: str = CONFIG["Owner"]["main_username"],
     coin_1: str = "BTC",
     coin_2: str = "USDT",
     total_quantity: float = 450,
@@ -402,7 +426,7 @@ def place_market_buy_order(
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(URL_DICT["NEW_ORDER_URL"], data=json_body, headers=headers)
-    if 401 in response.json().values():
+    if type(response.json) == dict and 401 in response.json().values():
         raise Exception("Unauthorized user credentials")
     data = response.json()
 
@@ -423,7 +447,7 @@ def place_market_buy_order(
 
 
 def place_market_sell_order(
-    username: str = CONFIG["Owner"]["alt_username"],
+    username: str = CONFIG["Owner"]["main_username"],
     coin_1: str = "BTC",
     coin_2: str = "USDT",
     total_quantity: float = 450,
@@ -456,7 +480,7 @@ def place_market_sell_order(
         "X-AUTH-SIGNATURE": signature,
     }
     response = requests.post(URL_DICT["NEW_ORDER_URL"], data=json_body, headers=headers)
-    if 401 in response.json().values():
+    if type(response.json) == dict and 401 in response.json().values():
         raise Exception("Unauthorized user credentials")
     logging.info(response.json())
     with open(ORDER_HISTORY_FILE, "a", newline="", encoding="utf-8") as file:
@@ -477,7 +501,7 @@ def place_market_sell_order(
 
 
 def create_multiple_orders(
-    username: str = CONFIG["Owner"]["alt_username"], orders: list = []
+    username: str = CONFIG["Owner"]["main_username"], orders: list = []
 ) -> None:
     """Create multiple orders at once.
 
@@ -523,13 +547,13 @@ def create_multiple_orders(
     response = requests.post(
         URL_DICT["CREATE_MULTIPLE_ORDERS_URL"], data=json_body, headers=headers
     )
-    if 401 in response.json().values():
+    if type(response.json) == dict and 401 in response.json().values():
         raise Exception("Unauthorized user credentials")
     logging.info(response.json())
     return response.json()
 
 
-def get_active_orders(username: str = CONFIG["Owner"]["alt_username"]) -> dict:
+def get_active_orders(username: str = CONFIG["Owner"]["main_username"]) -> dict:
     """Get the current buy or sell active orders for the username.
 
     Args:
@@ -555,12 +579,12 @@ def get_active_orders(username: str = CONFIG["Owner"]["alt_username"]) -> dict:
     response = requests.post(
         URL_DICT["ACTIVE_ORDERS_URL"], data=json_body, headers=headers, timeout=60
     )
-    if 401 in response.json().values():
+    if type(response.json) == dict and 401 in response.json().values():
         raise Exception("Unauthorized user credentials")
     return response.json()
 
 
-def account_trade_history(username: str = CONFIG["Owner"]["alt_username"]) -> dict:
+def account_trade_history(username: str = CONFIG["Owner"]["main_username"], save_dataframe: bool = False, limit: int = 500) -> dict:
     """Get the account trade history of the username.
 
     Args:
@@ -572,7 +596,7 @@ def account_trade_history(username: str = CONFIG["Owner"]["alt_username"]) -> di
     secret_bytes = bytes(get_keys(username=username)[1], encoding="utf-8")
     time_stamp = int(round(time.time() * 1000))
 
-    body = {"from_id": 352622, "limit": 50, "timestamp": time_stamp}
+    body = {"from_id": 352622, "limit": 50, "timestamp": time_stamp, "sort": "desc", "limit": limit}
 
     json_body = json.dumps(body, separators=(",", ":"))
     signature = hmac.new(secret_bytes, json_body.encode(), hashlib.sha256).hexdigest()
@@ -584,16 +608,19 @@ def account_trade_history(username: str = CONFIG["Owner"]["alt_username"]) -> di
     response = requests.post(
         URL_DICT["ACCOUNT_TRADE_HISTORY_URL"], data=json_body, headers=headers, timeout=60
     )
-    if 401 in response.json().values():
+
+    if type(response.json) == dict and 401 in response.json().values():
         raise Exception("Unauthorized user credentials")
+    dataframe = pd.DataFrame(response.json())
+    dataframe['timestamp'] = pd.to_datetime(dataframe["timestamp"], unit="ms") - timedelta(
+            hours=7, minutes=0
+        )
+    if save_dataframe:
+        dataframe.to_csv(paths.ORDER_HISTORY_FILE)
+    return dataframe
 
-    with open("order_history.csv", "w") as file:
-        response.json().to_csv(file)
 
-    return response.json()
-
-
-def cancel_order(username: str = CONFIG["Owner"]["alt_username"], ids: str = "") -> None:
+def cancel_order(username: str = CONFIG["Owner"]["main_username"], ids: str = "") -> None:
     """Cancel a particular order of the username.
 
     Args:
@@ -614,13 +641,13 @@ def cancel_order(username: str = CONFIG["Owner"]["alt_username"], ids: str = "")
     response = requests.post(
         URL_DICT["CANCEL_ONE_ACTIVE_ORDER_URL"], data=json_body, headers=headers, timeout=60
     )
-    if 401 in response.json().values():
+    if type(response.json) == dict and 401 in response.json().values():
         raise Exception("Unauthorized user credentials")
     logging.info(response.json())
     return response.json()
 
 
-def cancel_all_orders(username: str = CONFIG["Owner"]["alt_username"]) -> None:
+def cancel_all_orders(username: str = CONFIG["Owner"]["main_username"]) -> None:
     """Cancel all the active orders of the username.
 
     Args:
@@ -644,12 +671,12 @@ def cancel_all_orders(username: str = CONFIG["Owner"]["alt_username"]) -> None:
     response = requests.post(
         URL_DICT["CANCEL_ALL_ACTIVE_ORDERS_URL"], data=json_body, headers=headers, timeout=60
     )
-    if 401 in response.json().values():
+    if type(response.json) == dict and 401 in response.json().values():
         raise Exception("Unauthorized user credentials")
     return response.json()
 
 
-def cancel_multiple_by_ids(username: str = CONFIG["Owner"]["alt_username"], ids: list = []) -> None:
+def cancel_multiple_by_ids(username: str = CONFIG["Owner"]["main_username"], ids: list = []) -> None:
     """Cancel multiple orders given by the list of ids for a particular username.
 
     Args:
@@ -673,13 +700,13 @@ def cancel_multiple_by_ids(username: str = CONFIG["Owner"]["alt_username"], ids:
     }
 
     response = requests.post(url, data=json_body, headers=headers, timeout=60)
-    if 401 in response.json().values():
+    if type(response.json) == dict and 401 in response.json().values():
         raise Exception("Unauthorized user credentials")
     return response.json()
 
 
 def edit_price_of_orders(
-    username: str = CONFIG["Owner"]["alt_username"], ids: list = [], price: float = ""
+    username: str = CONFIG["Owner"]["main_username"], ids: list = [], price: float = ""
 ) -> None:
     """Edit the buy or sell price of the orders.
 
@@ -706,13 +733,13 @@ def edit_price_of_orders(
     response = requests.post(
         URL_DICT["EDIT_PRICE_URL"], data=json_body, headers=headers, timeout=60
     )
-    if 401 in response.json().values():
+    if type(response.json) == dict and 401 in response.json().values():
         raise Exception("Unauthorized user credentials")
     return response.json()
 
 
 def bot_trader(
-    username: str = CONFIG["Owner"]["alt_username"],
+    username: str = CONFIG["Owner"]["main_username"],
     coin_1: str = "BTC",
     coin_2: str = "USDT",
     market: str = "Binance",
@@ -791,16 +818,16 @@ def bot_trader(
             indicator_data_["Pivot.M.Fibonacci.R2"],
             indicator_data_["Pivot.M.Fibonacci.R3"],
         ]
-        data_frame = pd.DataFrame.from_dict(data)
-        data_frame = data_frame.sort_values("market")
-        # data_frame = data_frame[columns]
-        data_frame["timestamp"] = pd.to_datetime(data_frame["timestamp"], unit="s") + timedelta(
-            hours=5, minutes=30
+        dataframe = pd.DataFrame.from_dict(data)
+        dataframe = dataframe.sort_values("market")
+        # dataframe = dataframe[columns]
+        dataframe["timestamp"] = pd.to_datetime(dataframe["timestamp"], unit="ms") - timedelta(
+            hours=7, minutes=0
         )
         for currency in REMOVE_CURRENCIES:
-            data_frame = data_frame[~data_frame.market.str.endswith(currency)]
-        data_frame = data_frame.reset_index(drop=True)
-        data_frame = data_frame.sort_index(ascending=True, axis=0)
+            dataframe = dataframe[~dataframe.market.str.endswith(currency)]
+        dataframe = dataframe.reset_index(drop=True)
+        dataframe = dataframe.sort_index(ascending=True, axis=0)
         current_price = get_ticker(coin_1=coin_1, coin_2=coin_2)["last_price"]
         # SET BUY PRICE, SELL PRICE AND STOP LOSS CONDITIONS
         if current_price < pivot and current_price > supports[0] and current_price < close_price:
@@ -851,16 +878,15 @@ def bot_trader(
             send_mail(f"Sold {coin_2} for {profit}% profits!")
 
 
-def get_account_balance(username: str = CONFIG["Owner"]["alt_username"]) -> dict:
+def get_account_balance(username: str = CONFIG["Owner"]["main_username"], save_dataframe: bool = False) -> dict:
     """Get the account balance of the username.
 
     Args:
-        username (str, optional): The username of the account to get the balance of. Defaults to CONFIG['Owner']['alt_username'].
+        username (str, optional): The username of the account to get the balance of. Defaults to CONFIG['Owner']['main_username'].
 
     Returns:
         dict: The dictionary of the account balances of all the currencies.
     """
-
     secret_bytes = bytes(get_keys(username=username)[1], encoding="utf-8")
     time_stamp = int(round(time.time() * 1000))
     body = {"timestamp": time_stamp}
@@ -875,21 +901,28 @@ def get_account_balance(username: str = CONFIG["Owner"]["alt_username"]) -> dict
     response = requests.post(
         URL_DICT["ACCOUNT_BALANCE_URL"], data=json_body, headers=headers, timeout=60
     )
-    if 401 in response.json().values():
+    if type(response.json) == dict and 401 in response.json().values():
         raise Exception("Unauthorized user credentials")
     dataframe = pd.DataFrame(response.json())
-    price_list = []
-    # dataframe.to_csv("account_balance.csv")
-    dataframe = dataframe[dataframe["balance"] != "0.0"]
-    for coin in dataframe["currency"]:
-        if coin == "USDT":
-            details = get_ticker(coin_1=coin, coin_2="INR")
-            price_list.append(details["last_price"])
-        details = get_ticker(coin_1=coin)
-        if details != None:
-            price_list.append(details["last_price"])
-    dataframe["current_price"] = price_list
-    dataframe["timestamp"] = datetime.fromtimestamp(time_stamp / 1000)
+    # print(get_ticker().keys())
+    dataframe = dataframe[(dataframe['balance'].astype(float) > 0.0) | dataframe['locked_balance'].astype(float) > 0.0]
+    for coin in dataframe['currency']:
+        try:
+            dataframe.loc[dataframe['currency'] == coin, "quantity"] = dataframe.loc[dataframe['currency'] == coin]["balance"].astype(float)
+            dataframe.loc[dataframe['currency'] == coin, "balance"] = float(dataframe.loc[dataframe['currency'] == coin]["balance"]) * float(get_ticker(coin_1=coin)['last_price'])
+            dataframe.loc[dataframe['currency'] == coin, "locked_balance"] = float(dataframe.loc[dataframe['currency'] == coin]["locked_balance"]) * float(get_ticker(coin_1=coin)['last_price'])
+        except Exception as e:
+            logging.info(e)
+            try:
+                dataframe.loc[dataframe['currency'] == coin, "quantity"] = dataframe.loc[dataframe['currency'] == coin]["balance"].astype(float)
+                dataframe.loc[dataframe['currency'] == coin, "balance"] = float(dataframe.loc[dataframe['currency'] == coin]["balance"])* float(get_ticker(coin_1=coin, coin_2 = "USDC")['last_price'])
+                dataframe.loc[dataframe['currency'] == coin, "locked_balance"] = float(dataframe.loc[dataframe['currency'] == coin]["locked_balance"]) * float(get_ticker(coin_1=coin, coin_2 = "USDC")['last_price'])
+            except Exception as e:
+                logging.info(e)
+    dataframe = dataframe[(dataframe['balance'].astype(float) > 0.5) | dataframe['locked_balance'].astype(float) > 0.5]
+    dataframe = dataframe[dataframe['quantity'] > 0.01]
+    if save_dataframe:
+        dataframe.to_csv(paths.ACCOUNT_BALANCE_FILE, index=False)
     return dataframe
 
 
@@ -963,7 +996,7 @@ def get_indicator_data(
         pass
 
 
-def auto_trader(username: str = CONFIG["Owner"]["alt_username"]):
+def auto_trader(username: str = CONFIG["Owner"]["main_username"]):
     """Spin up an auto trading bot to trade for a particular username.
 
     Args:
@@ -1042,7 +1075,7 @@ def plot_historical_data(
     pyplot.show()
 
 
-def send_mail(message: str, receiver: str = CONFIG["Owner"]["alt_username"]) -> None:
+def send_mail(message: str, receiver: str = CONFIG["Owner"]["main_username"]) -> None:
     """Send mail function to send a mail and deliver the message.
 
     Args:
@@ -1062,7 +1095,7 @@ def price_tracker_mail(
     coin_2: str = "USDT",
     price: float = 0.0,
     mail: bool = False,
-    receiver: str = CONFIG["Owner"]["alt_username"],
+    receiver: str = CONFIG["Owner"]["main_username"],
 ) -> str:
     """Get the current price of the coin_1 and send a mail
 
@@ -1130,12 +1163,12 @@ def candle_plot(coin_1: str = "BTC", coin_2: str = "USDT", interval: str = "4h",
     candle_data = get_candles(coin_1=coin_1, coin_2=coin_2, interval=interval, limit=limit)
 
 
-def fetch_lend_orders(username: str = CONFIG["Owner"]["alt_username"]):
+def fetch_lend_orders(username: str = CONFIG["Owner"]["main_username"]):
     """
     Fetches the list of lend orders for the user.
 
     Args:
-        username (str): The username of the user. Defaults to "alt_username".
+        username (str): The username of the user. Defaults to "main_username".
 
     Returns:
         dict: A dictionary containing the list of lend orders.
@@ -1156,7 +1189,7 @@ def fetch_lend_orders(username: str = CONFIG["Owner"]["alt_username"]):
 
 
 def lend_order(
-    username: str = CONFIG["Owner"]["alt_username"], coin_name: str = "USDT", amount: float = 0.0
+    username: str = CONFIG["Owner"]["main_username"], coin_name: str = "USDT", amount: float = 0.0
 ):
     """
     Lends an amount of crypto to the exchange.
@@ -1183,12 +1216,12 @@ def lend_order(
     return response.json()
 
 
-def settle_orders(username: str = CONFIG["Owner"]["alt_username"]):
+def settle_orders(username: str = CONFIG["Owner"]["main_username"]):
     """
     Setstle all orders for the user.
 
     Args:
-        username (str): The username of the user. Defaults to "alt_username".
+        username (str): The username of the user. Defaults to "main_username".
 
     Returns:
         dict: A dictionary containing the list of settle orders.
@@ -1232,7 +1265,7 @@ def crypto_price_tracker(save_dataframe: bool = False):
             initial_market_data = pd.read_csv(initial_market_data_file)
             latest_market_data = pd.read_csv(current_market_data_file)
         else:
-            pass
+            get_price_of_coin_on_date(date="13-10-2023", save_dataframe = True, all_coins = True)
     date_difference = datetime.strptime(current_date, "%Y-%m-%d") - datetime.strptime(
         initial_date, "%Y-%m-%d"
     )
@@ -1317,12 +1350,8 @@ def get_price_of_coin_on_date(
                     )
                     complete_dataframe[count] = {
                         "market": coins,
-                        "close": candle_dataframe["close"].values[candle_dataframe["time"] == date][
-                            0
-                        ],
-                        "time": candle_dataframe["time"].values[candle_dataframe["time"] == date][
-                            0
-                        ],
+                        "close": candle_dataframe["close"].values[candle_dataframe["time"] == date][0],
+                        "time": candle_dataframe["time"].values[candle_dataframe["time"] == date][0],
                     }
                     count += 1
 
@@ -1596,11 +1625,26 @@ def regular_updates(
             pass
 
 
-def price_follower(coins_list, username=CONFIG["Owner"]["main_username"]):
-    account_balance = get_account_balance(username=username)
+def price_follower(username=CONFIG["Owner"]["main_username"]):
+    order_history_dataframe = account_trade_history(limit=100)
+    order_history_dataframe = order_history_dataframe[order_history_dataframe['side'] == 'buy']
+    if os.path.exists(paths.ACCOUNT_BALANCE_FILE):
+        account_balance = pd.read_csv(paths.ACCOUNT_BALANCE_FILE)
+    else:
+        account_balance = get_account_balance(username=username, save_dataframe=True)
+    # account_balance.to_json(os.path.join(os.path.expanduser("~"), fr"{paths.MARKET_DATA_DIRECTORY}/account_balance.json"))
+    # print(account_balance)
     print(account_balance)
 
+
 if __name__ == "__main__":
+    # price_follower()
+    # print(get_account_balance(save_dataframe = True))
+    # print(get_keys(username="vishalnadig")[1])
+    # print(account_trade_history(limit= 1000))
+    # print(get_keys(username="vishalnadig"))
+    # account_trade_history(username="vishalnadig")
+    # print(initialize())
     # print(get_active_orders(username="vishalnadig"))
     # print(get_market_data()['market'].values)
     crypto_price_tracker(save_dataframe=True)  # Use this
@@ -1614,5 +1658,3 @@ if __name__ == "__main__":
     # get_price_difference("NEAR")
     # print(get_buy_suggestions())
     ...
-
-

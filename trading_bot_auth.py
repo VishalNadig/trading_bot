@@ -321,18 +321,20 @@ def get_user_credentials(first_name: str = "", last_name: str = "", username: st
     if username:
         user = username.lower().replace(" ", "")
         try:
-            get_user_credentials_database(username=user)
-            get_credentials_config_file(username=username)
-        except Exception:
-            logging.error(Exception)
-            return {404: Exception}
+            return get_user_credentials_database(username=user)
+        except Exception as e:
+            logging.error(e)
+            return {404: e}
     elif first_name and last_name:
         try:
-            get_user_credentials_database(first_name=first_name, last_name=last_name)
-            get_credentials_config_file(first_name=first_name, last_name=last_name)
-        except Exception:
-            logging.error(Exception)
-            return {404: Exception}
+            return get_user_credentials_database(first_name=first_name, last_name=last_name)
+        except Exception as e:
+            logging.error(e)
+            try:
+                return get_credentials_config_file(first_name=first_name, last_name=last_name)
+            except Exception as e:
+                logging.error(e)
+                return {404: e}
     else:
         raise ValueError("Either username or first_name and last_name must be provided.")
 
@@ -371,7 +373,7 @@ def add_user_credentials(first_name: str = "", last_name: str = "", username: st
         raise ValueError("Either username or first_name and last_name must be provided.")
 
 
-def update_user_credentials(first_name: str = "", last_name: str = "", username: str = ""):
+def update_user_credentials(first_name: str = "", last_name: str = "", username: str = "", api_key="", secret_key="", email="", google_auth_key=""):
     """
     Updates the user's credentials in the system.
 
@@ -390,15 +392,15 @@ def update_user_credentials(first_name: str = "", last_name: str = "", username:
     if username:
         user = username.lower().replace(" ", "")
         try:
-            update_user_credentials_database(username=user)
-            update_user_credentials_config_file(username=username)
+            update_user_credentials_database(username=user, api_key=api_key, secret_key=secret_key, email=email, google_auth_key=google_auth_key)
+            update_user_credentials_config_file(username=user, api_key=api_key, secret_key=secret_key, email=email, google_auth_key=google_auth_key)
         except Exception:
             logging.error(Exception)
             return {404: Exception}
     elif first_name and last_name:
         try:
-            update_user_credentials_database(first_name=first_name, last_name=last_name)
-            update_user_credentials_config_file(first_name=first_name, last_name=last_name)
+            update_user_credentials_database(first_name=first_name, last_name=last_name, api_key=api_key, secret_key=secret_key, email=email, google_auth_key=google_auth_key)
+            update_user_credentials_config_file(first_name=first_name, last_name=last_name, api_key=api_key, secret_key=secret_key, email=email, google_auth_key=google_auth_key)
         except Exception:
             logging.error(Exception)
             return {404: Exception}

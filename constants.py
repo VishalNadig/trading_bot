@@ -13,11 +13,11 @@ CONFIG_FILE = paths.CONFIG_FILE
 MARKET_DATA_DIRECTORY = paths.MARKET_DATA_DIRECTORY
 with open(CONFIG_FILE) as file:
     CONFIG = yaml.safe_load(file)
-USER = CONFIG["database_creds"]["CONNECTION_2"]["USER"]
-PASSWORD = CONFIG["database_creds"]["CONNECTION_2"]["PASSWORD"]
-HOSTNAME = CONFIG["database_creds"]["CONNECTION_2"]["HOSTNAME"]
+USER = CONFIG["database_creds"]["CONNECTION_1"]["USER"]
+PASSWORD = CONFIG["database_creds"]["CONNECTION_1"]["PASSWORD"]
+HOSTNAME = CONFIG["database_creds"]["CONNECTION_1"]["HOSTNAME"]
 DATABASE = CONFIG["database_creds"]["DATABASE_1"]["NAME"]
-PORT = CONFIG["database_creds"]["CONNECTION_2"]["PORT"]
+PORT = CONFIG["database_creds"]["CONNECTION_1"]["PORT"]
 URL = f"mysql+pymysql://{USER}:{PASSWORD}@{HOSTNAME}:{PORT}/{DATABASE}"
 INITIAL_INVESTMENT = 0.024  # BTC
 SCREENER_LIST = ["India", "Crypto"]

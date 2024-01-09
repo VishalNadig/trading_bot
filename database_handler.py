@@ -15,7 +15,7 @@ logging.basicConfig(
 )
 
 METADATA = MetaData()
-URL = f"mysql+pymysql://{USER}:{PASSWORD}@{HOSTNAME}:{PORT}/{DATABASE}"
+# URL = f"mysql+pymysql://{USER}:{PASSWORD}@{HOSTNAME}:{PORT}/{DATABASE}"
 
 
 def encrypt_data(
@@ -91,7 +91,6 @@ def get_user_credentials(username: str = "", first_name: str = "", last_name: st
 
         api_key = decrypt_data(password=encrypted_api_key)["password"]
         secret_key = decrypt_data(password=encrypted_secret_key)["password"]
-
         return api_key, secret_key
     else:
         return {404: "User Not Found!"}
@@ -318,16 +317,16 @@ def delete_user_credentials(username: str = "", first_name: str = "", last_name:
 
 
 if __name__ == "__main__":
-    # print(add_user_credentials(username="vishalnadig", first_name="Vishal", last_name="Nadig", email="vishal@123", api_key="1234567890", secret_key="1234567890", google_auth_key="1234567890"))
+    print(add_user_credentials(username="vishalnadig", first_name="Vishal", last_name="Nadig", email="stalion.dan@gmail.com", api_key="591c102dfa8c9a46e6c29186aed24795dfdabda1ce77e9e4", secret_key="84f69be6c8a129f16c02e22b71b1e8382fa7c92719b69ea7313b0af9551ebda2", google_auth_key="EVOCSKCMCF7WW6JW"))
     # print(get_user_credentials(username="vishalnadig"))
-    print(
-        update_user_credentials(
-            username="vishalnadig",
-            email="vishal@12",
-            api_key="1234567890",
-            secret_key="1234567890",
-            google_auth_key="1234567890",
-        )
-    )
+    # print(
+    #     update_user_credentials(
+    #         username="vishalnadig",
+    #         email="vishal@12",
+    #         api_key="1234567890",
+    #         secret_key="1234567890",
+    #         google_auth_key="1234567890",
+    #     )
+    # )
     # print(delete_user_credentials(username="vishalnadig"))
     pass
