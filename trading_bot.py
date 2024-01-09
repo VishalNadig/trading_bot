@@ -1259,7 +1259,7 @@ def crypto_price_tracker(save_dataframe: bool = False):
     initial_market_data_file = os.path.join(
         market_data_directory, f"{initial_date}_market_data.csv"
     )
-    current_market_data_file = os.path.join(market_data_directory, file)
+    current_market_data_file = os.path.join(market_data_directory, f"{current_date}_market_data.csv")
     latest_market_data = pd.read_csv(current_market_data_file)
     if os.path.isfile(initial_market_data_file):
         initial_market_data = pd.read_csv(initial_market_data_file)
