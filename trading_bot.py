@@ -229,7 +229,7 @@ def get_market_data(save_dataframe: bool = False) -> pd.DataFrame:
 
 def get_markets_details(
     coin_1: str = "",
-    coin_2: str = "",
+    coin_2: str = "USDT",
     coins_list: list = [],
     all_coins: bool = False,
     save_dataframe: bool = False,
@@ -262,7 +262,7 @@ def get_markets_details(
                 )
             )
         return pd.DataFrame.from_dict(coins_list)
-    elif len(coins_list) == 0:
+    elif len(coins_list) > 0:
         for coins in data:
             if coins["symbol"] == coin_1 + coin_2:
                 return coins
@@ -279,6 +279,9 @@ def get_markets_details(
                 )
             )
         return pd.DataFrame.from_dict(coins_dictionary)
+    else:
+        dataframe = pd.DataFrame(data)
+        return dataframe[dataframe['coindcx_name'] == coin_1 + coin_2]
 
 
 def place_buy_limit_order(
@@ -994,7 +997,15 @@ def get_indicator_data(
         return trading_pair.get_analysis().indicators
     except Exception as e:
         logging.info(f"Error in get_indicator_data for {coin_1}: {e}")
-        pass
+        market = constants.MARKETS[get_markets_details(coin_1="NAKA", coin_2=coin_2)["ecode"].values[0]]
+        trading_pair = TA_Handler(
+            symbol=f"{coin_1+coin_2}",
+            screener=f"{screener_name}",
+            exchange=f"{market}",
+            interval=INTERVAL_DICT[str(interval)],
+        )
+        return trading_pair.get_analysis().indicators
+
 
 
 def auto_trader(username: str = CONFIG["Owner"]["main_username"]):
@@ -1653,7 +1664,9 @@ if __name__ == "__main__":
     # print(initialize())
     # print(get_active_orders(username="vishalnadig"))
     # print(get_market_data()['market'].values)
-    crypto_price_tracker(save_dataframe=True)  # Use this
+    # print(get_markets_details(all_coins=True))
+    print(get_indicator_data(coin_1="NAKA"))
+    # crypto_price_tracker(save_dataframe=True)  # Use this
     # print(get_candles(coin_1="1000SAT", coin_2="USDT", interval="4h", limit=1))
     # print(get_market_indicator(all_coins=True))
     # print(get_indicator_data(coin_1="1000SATS", coin_2="USDT", market="Binance", screener_name="Crypto", interval="4h"))
