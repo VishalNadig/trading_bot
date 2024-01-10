@@ -36,6 +36,7 @@ REMOVE_CURRENCIES = constants.REMOVE_CURRENCIES
 with open(constants.CONFIG_FILE) as file:
     CONFIG = yaml.safe_load(file)
 
+
 logging.basicConfig(
     level=logging.INFO,
     filemode="a",
