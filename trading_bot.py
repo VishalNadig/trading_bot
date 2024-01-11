@@ -1663,8 +1663,29 @@ def price_follower(username=CONFIG["Owner"]["main_username"]):
     print(account_balance)
 
 
+def what_if(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, save_dataframe: bool= False):
+    if all_coins:
+        pass
+        return 0
+    # BB and RSI Trading Strategy
+    indicator_data_ = (get_indicator_data(coin_1=coin_1, coin_2=coin_2))
+    print(indicator_data_)
+    print(f"RSI: {indicator_data_['RSI']}", f"BB Upper: {indicator_data_['BB.upper']}", f"BB Lower: {indicator_data_['BB.lower']}", f"SMA30: {indicator_data_['SMA30']}")
+    # Long if RSI < 25 and curernt_price < BB.Lower
+    # Short if RSI > 75 and current_price > BB.upper
+    # calculate Bullish and Bearish Divergence
+    # Iffy in sideways market
+
+    # MAC.D Strategy
+    # Long if MACD Line crosses the signal line below the 0 line and the current_price > EMA200 and EMA100
+    # Short if MACD line cross the signal line above the 0 line and the current_price < EMA200 and EMA100
+    # iffy in sideways market. Identify key supports and wait for the price to hit the support level twice in a row and then check if the MACD line crosses the signal line below the 0 line.
+    # histogram = MACD.macd - MACD.signal. Positive histogram is green and bullish. Negative histogram is red and bearish.
+    # For a long position with isolated margin, the liquidation price is calculated as: Entry price / (1 + (Initial margin ratio / Leverage)) . For a short position with isolated margin, the formula is Entry price / (1 - (Initial margin ratio / Leverage))
+
 if __name__ == "__main__":
-    crypto_price_tracker(save_dataframe=True)  # Use this
+    what_if(coin_1="RNDR")
+    # crypto_price_tracker(save_dataframe=True)  # Use this
     # price_follower()
     # print(get_account_balance(save_dataframe = True))
     # print(get_keys(username="vishalnadig")[1])
