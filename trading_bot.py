@@ -192,7 +192,7 @@ def get_ticker(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = Fals
                 return pd.DataFrame.from_dict([coins])
 
 
-def get_market_data(save_dataframe: bool = False) -> pd.DataFrame:
+def get_market_data(save_dataframe: bool = False, skip_btc: bool = False) -> pd.DataFrame:
     # TODO: Add Currencies to include feature
     """Get the market data of all coins in the market currently.
 
@@ -218,6 +218,8 @@ def get_market_data(save_dataframe: bool = False) -> pd.DataFrame:
     dataframe["timestamp"] = pd.to_datetime(dataframe["timestamp"], unit="ms") - timedelta(
         hours=7, minutes=0
     )
+    if skip_btc:
+        dataframe = dataframe[~dataframe['market'].str.contains("BTC")]
     if save_dataframe:
         dataframe.to_csv(
             rf"C:\Users\nadig\git\crypto_market_data\{datetime.now().strftime('%Y-%m-%d')}_market_data.csv"
@@ -233,6 +235,8 @@ def get_markets_details(
     coins_list: list = [],
     all_coins: bool = False,
     save_dataframe: bool = False,
+    show_leverage_long: bool = False,
+    show_leverage_short: bool = False,
 ) -> pd.DataFrame:
     """Get the market details of the coins listed on the exchange. This includes the max leverage of the coin, the market it trades in, the min quantity to place an order, the max quantity to place an order.
 
@@ -254,14 +258,46 @@ def get_markets_details(
         for coins in data:
             if coin_2 in coins["symbol"]:
                 coins_list.append(coins)
+        dataframe = pd.DataFrame.from_dict(coins_list)
+        if show_leverage_short:
+            dataframe = dataframe[~dataframe['coindcx_name'].str.contains("USDT")]
+            dataframe = dataframe.loc[(dataframe['max_leverage_short'].astype(float) > 1.0) | (dataframe['max_leverage_short'].astype(float) > 1.0)]
+            dataframe = dataframe.sort_values(by=["max_leverage_short"], ascending=True)
+            dataframe = dataframe.reset_index()
+            if dataframe.empty:
+                return 0
+            if save_dataframe:
+                dataframe.to_csv(
+                    os.path.join(
+                        constants.MARKET_DATA_DIRECTORY,
+                        f"{datetime.now().strftime('%Y-%m-%d')}_long_market_details.csv",
+                    )
+                )
+                return dataframe
+            return dataframe
+        if show_leverage_long:
+            dataframe = dataframe[~dataframe['coindcx_name'].str.contains("BTC")]
+            dataframe = dataframe.loc[(dataframe['max_leverage'].astype(float) > 1.0) | (dataframe['max_leverage_short'].astype(float) > 1.0)]
+            dataframe = dataframe.sort_values(by=["max_leverage"], ascending=True)
+            dataframe = dataframe.reset_index()
+            if save_dataframe:
+                dataframe.to_csv(
+                    os.path.join(
+                        constants.MARKET_DATA_DIRECTORY,
+                        f"{datetime.now().strftime('%Y-%m-%d')}_long_market_details.csv",
+                    )
+                )
+                return dataframe
+            return dataframe
         if save_dataframe:
-            pd.DataFrame.from_dict(coins_list).to_csv(
+            dataframe.to_csv(
                 os.path.join(
                     constants.MARKET_DATA_DIRECTORY,
                     f"{datetime.now().strftime('%Y-%m-%d')}_market_details.csv",
                 )
             )
-        return pd.DataFrame.from_dict(coins_list)
+
+        return dataframe
     elif len(coins_list) > 0:
         for coins in data:
             if coins["symbol"] == coin_1 + coin_2:
@@ -270,7 +306,6 @@ def get_markets_details(
             for coins in data:
                 if coins["symbol"] == coin + "USDT":
                     coins_dictionary[coins["symbol"]] = coins
-        # print(coins_dictionary)
         if save_dataframe:
             pd.DataFrame.from_dict(coins_list).to_csv(
                 os.path.join(
@@ -1007,14 +1042,29 @@ def get_indicator_data(
             )
             return trading_pair.get_analysis().indicators
         except Exception as e:
+            print(coin_1, e)
             logging.info(f"Error in get_indicator_data for {coin_1}: {e}")
-            trading_pair = TA_Handler(
+            try:
+                trading_pair = TA_Handler(
                 symbol=f"{coin_1+coin_2}",
                 screener=f"{screener_name}",
                 exchange="GateIO",
                 interval=INTERVAL_DICT[str(interval)],
-            )
-            return trading_pair.get_analysis().indicators
+                )
+                return trading_pair.get_analysis().indicators
+            except Exception as e:
+                print(coin_1, e)
+                logging.info(f"Error in get_indicator_data for {coin_1}: {e}")
+                try:
+                    trading_pair = TA_Handler(
+                    symbol=f"{coin_1+coin_2}",
+                    screener=f"{screener_name}",
+                    exchange="MEXC",
+                    interval=INTERVAL_DICT[str(interval)],
+                    )
+                    return trading_pair.get_analysis().indicators
+                except Exception as e:
+                    print(coin_1, e)
 
 
 def auto_trader(username: str = CONFIG["Owner"]["main_username"]):
@@ -1355,7 +1405,7 @@ def get_price_of_coin_on_date(
         return {404: "Please provide either a date or number of days."}
     elif date or number_of_days:
         if all_coins:
-            print("Getting all coins")
+            logging.info("Getting all coins")
             complete_dataframe = pd.DataFrame()
             dataframe = get_market_data()
             date_required = datetime.now() - datetime.strptime(date, "%d-%m-%Y")
@@ -1663,12 +1713,33 @@ def price_follower(username=CONFIG["Owner"]["main_username"]):
     print(account_balance)
 
 
-def what_if(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, save_dataframe: bool= False):
+def bb_rsi_strategy(coin_1: str = "BTC", coin_2 = "USDT", interval: str = "4h", all_coins: bool = False, initial_capital: float = 1000.0):
+    indicator_data_ = get_indicator_data(coin_1=coin_1, coin_2=coin_2, interval=interval)
+    RSI = indicator_data_['RSI']
+    BB_upper = indicator_data_['BB.upper']
+    BB_lower = indicator_data_['BB.lower']
+    current_price = get_ticker(coin_1=coin_1, coin_2=coin_2)['last_price']
+    if RSI < 25 and current_price < BB_lower:
+        long = True
+        position = 0.1*initial_capital/current_price
+        with open("dummy_trades.csv", "w") as file:
+            file.write(f"{coin_1+coin_2}, {position},{current_price},{datetime.now()}, 'Long'")
+    elif RSI > 75 and current_price > BB_upper:
+        short = True
+    else:
+        return 0
+
+
+def macd_strategy(coin_1: str = "BTC", coin_2 = "USDT", interval: str = "4h", all_coins: bool = False, initial_capital: float = 1000.0):
+    pass
+
+
+def what_if(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, save_dataframe: bool= False, interval: str = "4h"):
     if all_coins:
         pass
         return 0
     # BB and RSI Trading Strategy
-    indicator_data_ = (get_indicator_data(coin_1=coin_1, coin_2=coin_2))
+    indicator_data_ = (get_indicator_data(coin_1=coin_1, coin_2=coin_2, interval=interval))
     print(indicator_data_)
     print(f"RSI: {indicator_data_['RSI']}", f"BB Upper: {indicator_data_['BB.upper']}", f"BB Lower: {indicator_data_['BB.lower']}", f"SMA30: {indicator_data_['SMA30']}")
     # Long if RSI < 25 and curernt_price < BB.Lower
@@ -1683,8 +1754,77 @@ def what_if(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, 
     # histogram = MACD.macd - MACD.signal. Positive histogram is green and bullish. Negative histogram is red and bearish.
     # For a long position with isolated margin, the liquidation price is calculated as: Entry price / (1 + (Initial margin ratio / Leverage)) . For a short position with isolated margin, the formula is Entry price / (1 - (Initial margin ratio / Leverage))
 
+
+def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, save_datafram: bool = False, interval: str = "4h", skip_btc: bool = True, show_leverage: bool = True):
+    long_dataframe = pd.DataFrame()
+    if all_coins:
+        dataframe = get_markets_details(all_coins=all_coins, skip_btc=skip_btc, show_leverage=show_leverage)
+        print(dataframe)
+        for coin in dataframe["coindcx_name"].values:
+            if "USDT" in coin:
+                coin_1 = coin.split("USDT")[0]
+                coin_2 = "USDT"
+            elif "BTC" in coin:
+                coin_1 = coin.split("BTC")[0]
+                coin_2 = "BTC"
+            elif "USDC" in coin:
+                coin_1 = coin.split("USDC")[0]
+                coin_2 = "USDC"
+            current_price = get_ticker(coin_1=coin_1, coin_2=coin_2)['last_price']
+            indicator_data = get_indicator_data(coin_1=coin_1, coin_2 = coin_2, interval=interval)
+            print(coin_1+coin_2, current_price)
+            try:
+                if indicator_data["RSI"] < 25 and current_price < indicator_data['BB.Lower']:
+                    long_dataframe['market'] = coin_1+coin_2
+                    long_dataframe['RSI'] = indicator_data['RSI']
+                    long_dataframe['BB.upper'] = indicator_data['BB.upper']
+                    long_dataframe['BB.lower'] = indicator_data['BB.lower']
+                    long_dataframe['current_price'] = current_price
+            except Exception as e:
+                print(e)
+                pass
+    if save_datafram:
+        long_dataframe.to_csv(os.path.join(constants.MARKET_DATA_DIRECTORY, "\long_recommendations.csv"))
+        return long_dataframe
+    return long_dataframe
+
+
+def short_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, save_datafram: bool = False, interval: str = "4h"):
+    short_dataframe = pd.DataFrame()
+    if all_coins:
+        dataframe = get_market_data()
+        print(dataframe)
+        for coin in dataframe["market"].values:
+            if "USDT" in coin:
+                coin_1 = coin.split("USDT")[0]
+                coin_2 = "USDT"
+            elif "BTC" in coin:
+                coin_1 = coin.split("BTC")[0]
+                coin_2 = "BTC"
+            elif "USDC" in coin:
+                coin_1 = coin.split("USDC")[0]
+                coin_2 = "USDC"
+            current_price = get_ticker(coin_1=coin_1, coin_2=coin_2)['last_price']
+            indicator_data = get_indicator_data(coin_1=coin_1, coin_2 = coin_2, interval=interval)
+            print(coin_1+coin_2, current_price)
+            if indicator_data["RSI"] > 75 and current_price > indicator_data['BB.Upper']:
+                short_dataframe['market'] = coin_1+coin_2
+                short_dataframe['RSI'] = indicator_data['RSI']
+                short_dataframe['BB.upper'] = indicator_data['BB.upper']
+                short_dataframe['BB.lower'] = indicator_data['BB.lower']
+                short_dataframe['current_price'] = current_price
+
+    if save_datafram:
+        short_dataframe.to_csv(os.path.join(constants.MARKET_DATA_DIRECTORY, "\long_recommendations.csv"))
+        return short_dataframe
+    return short_dataframe
+
+
 if __name__ == "__main__":
-    what_if(coin_1="RNDR")
+    # what_if(coin_1="RNDR")
+    # print(get_markets_details(all_coins=True, show_leverage_short=True))
+    # long_recommendations(all_coins=True, skip_btc=True)
+    # print(get_markets_details(all_coins=True))
     # crypto_price_tracker(save_dataframe=True)  # Use this
     # price_follower()
     # print(get_account_balance(save_dataframe = True))
