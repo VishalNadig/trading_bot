@@ -1323,7 +1323,8 @@ def crypto_price_tracker(save_dataframe: bool = False):
         None
     """
     get_market_data(save_dataframe=save_dataframe)
-
+    market_dataframe = get_markets_details(all_coins=True)[['coindcx_name', 'max_leverage']]
+    market_dataframe.rename(columns={'coindcx_name': 'market'}, inplace=True)
     initial_date = "2023-12-20"
     current_date = datetime.now().strftime("%Y-%m-%d")
     market_data_directory = constants.MARKET_DATA_DIRECTORY
@@ -1371,6 +1372,8 @@ def crypto_price_tracker(save_dataframe: bool = False):
     initial_market_data = initial_market_data.join(
         price_change, on="market", how="left", rsuffix="change"
     )
+    initial_market_data = pd.merge(initial_market_data, market_dataframe, on='market', how='left').fillna(0)
+    print(initial_market_data)
     if save_dataframe:
         initial_market_data.to_csv(
             os.path.join(market_data_directory, f"{file_name}.csv"), index=False
@@ -1820,12 +1823,21 @@ def short_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: 
     return short_dataframe
 
 
+def sample():
+    sample_dataframe = crypto_price_tracker()
+    # crypto_dataframe = crypto_price_tracker()
+
+    # crypto_dataframe = pd.concat([sample_dataframe, market_dataframe], axis=1)
+    # crypto_dataframe = pd.merge(sample_dataframe, market_dataframe, on='market', how='left').fillna(0)
+    # print(crypto_dataframe)
+
 if __name__ == "__main__":
+    # sample()
     # what_if(coin_1="RNDR")
     # print(get_markets_details(all_coins=True, show_leverage_short=True))
     # long_recommendations(all_coins=True, skip_btc=True)
     # print(get_markets_details(all_coins=True))
-    # crypto_price_tracker(save_dataframe=True)  # Use this
+    crypto_price_tracker(save_dataframe=True)  # Use this
     # price_follower()
     # print(get_account_balance(save_dataframe = True))
     # print(get_keys(username="vishalnadig")[1])
