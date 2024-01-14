@@ -1348,7 +1348,6 @@ def crypto_price_tracker(save_dataframe: bool = False):
     if os.path.isfile(current_market_data_file):
         latest_market_data = pd.read_csv(current_market_data_file)
     else:
-        print(True)
         get_price_of_coin_on_date(date=current_date, save_dataframe=True, all_coins=True)
         latest_market_data = pd.read_csv(current_market_data_file)
     if os.path.isfile(initial_market_data_file):
@@ -1387,6 +1386,7 @@ def crypto_price_tracker(save_dataframe: bool = False):
         price_change, on="market", how="left", rsuffix="change"
     )
     initial_market_data = pd.merge(initial_market_data, market_dataframe, on='market', how='left').fillna(0)
+    initial_market_data.drop_duplicates(subset="market", keep="first", inplace=True)
     if save_dataframe:
         initial_market_data.to_csv(
             os.path.join(market_data_directory, f"{file_name}.csv"), index=False
@@ -1770,6 +1770,19 @@ def what_if(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, 
 
 
 def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, save_dataframe: bool = False, interval: str = "4h"):
+    """
+    Generates long recommendations based on certain criteria.
+
+    Args:
+        coin_1 (str, optional): The first coin to consider. Defaults to "BTC".
+        coin_2 (str, optional): The second coin to consider. Defaults to "USDT".
+        all_coins (bool, optional): Whether to consider all coins. Defaults to False.
+        save_dataframe (bool, optional): Whether to save the resulting dataframe. Defaults to False.
+        interval (str, optional): The interval to use for calculations. Defaults to "4h".
+
+    Returns:
+        pandas.DataFrame: The resulting dataframe containing long recommendations.
+    """
     # For a long position with isolated margin, the liquidation price is calculated as: Entry price / (1 + (Initial margin ratio / Leverage)) .
     long_dataframe = pd.DataFrame()
     if os.path.exists(paths.ACCOUNT_BALANCE_FILE):

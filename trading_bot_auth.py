@@ -339,7 +339,7 @@ def get_user_credentials(first_name: str = "", last_name: str = "", username: st
         raise ValueError("Either username or first_name and last_name must be provided.")
 
 
-def add_user_credentials(first_name: str = "", last_name: str = "", username: str = ""):
+def add_user_credentials(first_name: str = "", last_name: str = "", username: str = "", api_key: str = "", secret_key: str = "", email: str = "", google_auth_key: str = ""):
     """
     Adds user credentials to the system.
 
@@ -357,15 +357,15 @@ def add_user_credentials(first_name: str = "", last_name: str = "", username: st
     if username:
         user = username.lower().replace(" ", "")
         try:
-            get_user_credentials_database(username=user)
-            get_credentials_config_file(username=username)
+            add_user_credentials_database(username=user, api_key=api_key, secret_key=secret_key, email=email, google_auth_key=google_auth_key)
+            add_user_credentials_config_file(username=user, api_key=api_key, secret_key=secret_key, email=email, google_auth_key=google_auth_key)
         except Exception:
             logging.error(Exception)
             return {404: Exception}
     elif first_name and last_name:
         try:
-            get_user_credentials_database(first_name=first_name, last_name=last_name)
-            get_credentials_config_file(first_name=first_name, last_name=last_name)
+            add_user_credentials_database(first_name=first_name, last_name=last_name, api_key=api_key, secret_key=secret_key, email=email, google_auth_key=google_auth_key)
+            add_user_credentials_config_file(first_name=first_name, last_name=last_name, api_key=api_key, secret_key=secret_key, email=email, google_auth_key=google_auth_key)
         except Exception:
             logging.error(Exception)
             return {404: Exception}
@@ -399,8 +399,11 @@ def update_user_credentials(first_name: str = "", last_name: str = "", username:
             return {404: Exception}
     elif first_name and last_name:
         try:
-            update_user_credentials_database(first_name=first_name, last_name=last_name, api_key=api_key, secret_key=secret_key, email=email, google_auth_key=google_auth_key)
-            update_user_credentials_config_file(first_name=first_name, last_name=last_name, api_key=api_key, secret_key=secret_key, email=email, google_auth_key=google_auth_key)
+            first_name = first_name.lower()
+            last_name = last_name.lower()
+            user = first_name + last_name
+            update_user_credentials_database(first_name=first_name, last_name=last_name, username=user, api_key=api_key, secret_key=secret_key, email=email, google_auth_key=google_auth_key)
+            update_user_credentials_config_file(first_name=first_name, last_name=last_name, username=user, api_key=api_key, secret_key=secret_key, email=email, google_auth_key=google_auth_key)
         except Exception:
             logging.error(Exception)
             return {404: Exception}
@@ -431,8 +434,11 @@ def delete_user_credentials(first_name: str = "", last_name: str = "", username:
             return {404: Exception}
     elif first_name and last_name:
         try:
-            delete_user_credentials_database(first_name=first_name, last_name=last_name)
-            delete_user_credentials_config_file(first_name=first_name, last_name=last_name)
+            first_name = first_name.lower()
+            last_name = last_name.lower()
+            user = first_name + last_name
+            delete_user_credentials_database(first_name=first_name, last_name=last_name, username=user)
+            delete_user_credentials_config_file(first_name=first_name, last_name=last_name, username=user)
         except Exception:
             logging.error(Exception)
             return {404: Exception}
