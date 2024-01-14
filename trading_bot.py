@@ -1730,6 +1730,7 @@ def price_follower(username=CONFIG["Owner"]["main_username"]):
     # account_balance.to_json(os.path.join(os.path.expanduser("~"), fr"{paths.MARKET_DATA_DIRECTORY}/account_balance.json"))
     # print(account_balance)
     print(account_balance)
+    print(order_history_dataframe)
 
 
 def bb_rsi_strategy(coin_1: str = "BTC", coin_2 = "USDT", interval: str = "4h", all_coins: bool = False, initial_capital: float = 1000.0):
@@ -1890,18 +1891,22 @@ def short_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: 
         return short_dataframe
     return short_dataframe
 
+def run_on_loop():
+    while True:
+        long_recommendations(balance_only=True)
+
 
 if __name__ == "__main__":
-    dataframe = account_trade_history(username="vishalnadig", limit= 1000)
-    print(dataframe)
-    print(dataframe[dataframe['symbol'] == "TRADEUSDT"].value_counts("side"))
+    # dataframe = account_trade_history(username="vishalnadig", limit= 1000)
+    # print(dataframe)
+    # print(dataframe[dataframe['symbol'] == "TRADEUSDT"].value_counts("side"))
     # print(get_keys(username="vishalnadig"))
     # what_if(coin_1="RNDR")
     # print(get_markets_details(all_coins=True, show_leverage_short=True))
     # long_recommendations(all_coins=True)
     # crypto_price_tracker(save_dataframe=True)  # Use this
-    # price_follower()
-    print(get_account_balance(save_dataframe = True))
+    run_on_loop()
+    # print(get_account_balance(save_dataframe = True))
     # print(initialize())
     # print(get_active_orders(username="vishalnadig"))
     # print(get_market_data()['market'].values)
