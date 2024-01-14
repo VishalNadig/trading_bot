@@ -1791,6 +1791,8 @@ def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: b
     long_dataframe = pd.DataFrame()
     if os.path.exists(paths.ACCOUNT_BALANCE_FILE):
         account_balance_dataframe = pd.read_csv(paths.ACCOUNT_BALANCE_FILE)
+        if "max_leverage" not in account_balance_dataframe.keys():
+            account_balance_dataframe = get_account_balance(username=CONFIG["Owner"]["main_username"], save_dataframe=True)
     else:
         account_balance_dataframe = get_account_balance(username=CONFIG["Owner"]["main_username"], save_dataframe=True)
     account_balance_dataframe = account_balance_dataframe[account_balance_dataframe['max_leverage'] > 1]
@@ -1906,7 +1908,7 @@ if __name__ == "__main__":
     # long_recommendations(all_coins=True)
     # crypto_price_tracker(save_dataframe=True)  # Use this
     run_on_loop()
-    # print(get_account_balance(save_dataframe = True))
+    # print(get_account_balance())
     # print(initialize())
     # print(get_active_orders(username="vishalnadig"))
     # print(get_market_data()['market'].values)
