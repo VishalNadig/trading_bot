@@ -6,6 +6,7 @@ from tradingview_ta import Interval
 
 from paths import paths
 
+TRADING_FEE = 0.011 # 0.1% trading fee + 1% TDS
 ORDER_HISTORY_FILE = paths.ORDER_HISTORY_FILE
 LOGFILE = paths.LOGFILE
 TODAY = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
@@ -13,11 +14,11 @@ CONFIG_FILE = paths.CONFIG_FILE
 MARKET_DATA_DIRECTORY = paths.MARKET_DATA_DIRECTORY
 with open(CONFIG_FILE) as file:
     CONFIG = yaml.safe_load(file)
-USER = CONFIG["database_creds"]["CONNECTION_1"]["USER"]
-PASSWORD = CONFIG["database_creds"]["CONNECTION_1"]["PASSWORD"]
-HOSTNAME = CONFIG["database_creds"]["CONNECTION_1"]["HOSTNAME"]
+USER = CONFIG["database_creds"]["CONNECTION_2"]["USER"]
+PASSWORD = CONFIG["database_creds"]["CONNECTION_2"]["PASSWORD"]
+HOSTNAME = CONFIG["database_creds"]["CONNECTION_2"]["HOSTNAME"]
 DATABASE = CONFIG["database_creds"]["DATABASE_1"]["NAME"]
-PORT = CONFIG["database_creds"]["CONNECTION_1"]["PORT"]
+PORT = CONFIG["database_creds"]["CONNECTION_2"]["PORT"]
 URL = f"mysql+pymysql://{USER}:{PASSWORD}@{HOSTNAME}:{PORT}/{DATABASE}"
 INITIAL_INVESTMENT = 0.024  # BTC
 SCREENER_LIST = ["India", "Crypto"]
@@ -105,8 +106,12 @@ REMOVE_CURRENCIES = {
     "XRP",
     "INR_insta",
 }
-MARKETS = (
-    "Binance",
-    "Huobi",
-    "CoinDCX",
-)
+MARKETS = {
+    "B": "Binance",
+    "KC": "Kucoin",
+    "I": "CoinDCX",
+    "H": "Huobi",
+    "G": "GateIO",
+}
+
+{'KC', 'B', 'H', 'I'}

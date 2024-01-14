@@ -82,7 +82,6 @@ def get_user_credentials(username: str = "", first_name: str = "", last_name: st
         "SELECT EXISTS(SELECT 1 FROM trading_bot.users WHERE username = %s)",
         username or (first_name.title() + " " + last_name.title()),
     ).fetchone()[0]
-
     if user_exists:
 
         encrypted_api_key, encrypted_secret_key = connection.execute(
