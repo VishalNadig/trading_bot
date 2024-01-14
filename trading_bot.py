@@ -10,7 +10,6 @@ import smtplib
 import time
 from datetime import datetime, timedelta
 import pandas as pd
-
 import requests
 import yaml
 from matplotlib import pyplot
@@ -33,6 +32,7 @@ INTERVAL_DICT = constants.INTERVAL_DICT
 URL_DICT = constants.URL_DICT
 REMOVE_CURRENCIES = constants.REMOVE_CURRENCIES
 
+
 with open(constants.CONFIG_FILE) as file:
     CONFIG = yaml.safe_load(file)
 
@@ -52,19 +52,19 @@ def initialize():
     if not os.path.isfile(os.path.join(paths.HOME_DIRECTORY, paths.LOGFILE)):
         logging.info(rf"{paths.LOGFILE} does not exist! Creating {paths.LOGFILE}")
         with open(os.path.join(paths.HOME_DIRECTORY, paths.LOGFILE), "w") as file:
-            pass
+            file.write()
     if not os.path.isfile(os.path.join(paths.HOME_DIRECTORY, paths.CONFIG_FILE)):
         logging.info(rf"{paths.CONFIG_FILE} does not exist! Creating {paths.CONFIG_FILE}")
         with open(os.path.join(paths.HOME_DIRECTORY, paths.CONFIG_FILE), "w") as file:
-            pass
+            file.write()
     if not os.path.isfile(os.path.join(paths.MARKET_DATA_DIRECTORY, paths.ORDER_HISTORY_FILE)):
         logging.info(rf"{paths.ORDER_HISTORY_FILE} does not exist! Creating {paths.ORDER_HISTORY_FILE}")
         with open(os.path.join(paths.MARKET_DATA_DIRECTORY, paths.ORDER_HISTORY_FILE), "w") as file:
-            pass
+            file.write()
     if not os.path.isfile(os.path.join(paths.MARKET_DATA_DIRECTORY, paths.TRADING_BOT_ORDER_HISTORY_FILE)):
         logging.info(rf"{paths.TRADING_BOT_ORDER_HISTORY_FILE} does not exist! Creating {paths.TRADING_BOT_ORDER_HISTORY_FILE}")
         with open(os.path.join(paths.MARKET_DATA_DIRECTORY, paths.TRADING_BOT_ORDER_HISTORY_FILE), "w") as file:
-            pass
+            file.write()
 
 
 def get_keys(first_name: str = "", last_name: str = "", username: str = "") -> tuple:
@@ -213,11 +213,14 @@ def get_market_data(save_dataframe: bool = False, skip_btc: bool = False) -> pd.
             coins_dictionary[coins["market"]] = coins
         elif "VRA" in coins["market"] and "insta" not in coins["market"]:
             coins_dictionary[coins["market"]] = coins
+    market_dataframe = get_markets_details(all_coins=True)[['coindcx_name', 'max_leverage']]
+    market_dataframe.rename(columns={'coindcx_name': 'market'}, inplace=True)
     dataframe = pd.DataFrame(coins_dictionary).T
     dataframe = dataframe.sort_index(ascending=True, axis=0)
     dataframe["timestamp"] = pd.to_datetime(dataframe["timestamp"], unit="ms") - timedelta(
         hours=7, minutes=0
     )
+    dataframe = pd.merge(dataframe, market_dataframe, on='market', how='left').fillna(0)
     if skip_btc:
         dataframe = dataframe[~dataframe['market'].str.contains("BTC")]
     if save_dataframe:
@@ -948,18 +951,28 @@ def get_account_balance(username: str = CONFIG["Owner"]["main_username"], save_d
     for coin in dataframe['currency']:
         try:
             dataframe.loc[dataframe['currency'] == coin, "quantity"] = dataframe.loc[dataframe['currency'] == coin]["balance"].astype(float)
-            dataframe.loc[dataframe['currency'] == coin, "balance"] = float(dataframe.loc[dataframe['currency'] == coin]["balance"]) * float(get_ticker(coin_1=coin)['last_price'])
-            dataframe.loc[dataframe['currency'] == coin, "locked_balance"] = float(dataframe.loc[dataframe['currency'] == coin]["locked_balance"]) * float(get_ticker(coin_1=coin)['last_price'])
+            dataframe.loc[dataframe['currency'] == coin, "balance"] = float(dataframe.iloc[dataframe['currency'] == coin]["balance"]) * float(get_ticker(coin_1=coin)['last_price'])
+            dataframe.loc[dataframe['currency'] == coin, "locked_balance"] = float(dataframe.iloc[dataframe['currency'] == coin]["locked_balance"]) * float(get_ticker(coin_1=coin)['last_price'])
         except Exception as e:
             logging.info(e)
             try:
                 dataframe.loc[dataframe['currency'] == coin, "quantity"] = dataframe.loc[dataframe['currency'] == coin]["balance"].astype(float)
-                dataframe.loc[dataframe['currency'] == coin, "balance"] = float(dataframe.loc[dataframe['currency'] == coin]["balance"])* float(get_ticker(coin_1=coin, coin_2 = "USDC")['last_price'])
-                dataframe.loc[dataframe['currency'] == coin, "locked_balance"] = float(dataframe.loc[dataframe['currency'] == coin]["locked_balance"]) * float(get_ticker(coin_1=coin, coin_2 = "USDC")['last_price'])
+                dataframe.loc[dataframe['currency'] == coin, "balance"] = float(dataframe.iloc[dataframe['currency'] == coin]["balance"])* float(get_ticker(coin_1=coin, coin_2 = "USDC")['last_price'])
+                dataframe.loc[dataframe['currency'] == coin, "locked_balance"] = float(dataframe.iloc[dataframe['currency'] == coin]["locked_balance"]) * float(get_ticker(coin_1=coin, coin_2 = "USDC")['last_price'])
             except Exception as e:
                 logging.info(e)
     dataframe = dataframe[(dataframe['balance'].astype(float) > 0.5) | dataframe['locked_balance'].astype(float) > 0.5]
     dataframe = dataframe[dataframe['quantity'] > 0.01]
+    market_dataframe = get_markets_details(all_coins=True)[['coindcx_name', 'max_leverage']]
+    market_dataframe.columns = ['currency', 'max_leverage']
+    for coin in dataframe['currency']:
+        dataframe['currency'] = dataframe['currency'].replace(coin, coin + "USDT")
+        if coin + "USDT" not in market_dataframe['currency'].values:
+            dataframe = dataframe.drop(dataframe[dataframe['currency'] == coin].index)
+    dataframe = pd.merge(dataframe, market_dataframe, on='currency', how='left')
+    dataframe.rename(columns={'currency': 'market'}, inplace=True)
+    dataframe.fillna(0, inplace=True)
+    dataframe.reset_index(drop=True, inplace=True)
     if save_dataframe:
         dataframe.to_csv(paths.ACCOUNT_BALANCE_FILE, index=False)
     return dataframe
@@ -1335,6 +1348,7 @@ def crypto_price_tracker(save_dataframe: bool = False):
     if os.path.isfile(current_market_data_file):
         latest_market_data = pd.read_csv(current_market_data_file)
     else:
+        print(True)
         get_price_of_coin_on_date(date=current_date, save_dataframe=True, all_coins=True)
         latest_market_data = pd.read_csv(current_market_data_file)
     if os.path.isfile(initial_market_data_file):
@@ -1373,7 +1387,6 @@ def crypto_price_tracker(save_dataframe: bool = False):
         price_change, on="market", how="left", rsuffix="change"
     )
     initial_market_data = pd.merge(initial_market_data, market_dataframe, on='market', how='left').fillna(0)
-    print(initial_market_data)
     if save_dataframe:
         initial_market_data.to_csv(
             os.path.join(market_data_directory, f"{file_name}.csv"), index=False
@@ -1734,6 +1747,11 @@ def bb_rsi_strategy(coin_1: str = "BTC", coin_2 = "USDT", interval: str = "4h", 
 
 
 def macd_strategy(coin_1: str = "BTC", coin_2 = "USDT", interval: str = "4h", all_coins: bool = False, initial_capital: float = 1000.0):
+# MAC.D Strategy
+    # Long if MACD Line crosses the signal line below the 0 line and the current_price > EMA200 and EMA100
+    # Short if MACD line cross the signal line above the 0 line and the current_price < EMA200 and EMA100
+    # iffy in sideways market. Identify key supports and wait for the price to hit the support level twice in a row and then check if the MACD line crosses the signal line below the 0 line.
+    # histogram = MACD.macd - MACD.signal. Positive histogram is green and bullish. Negative histogram is red and bearish.
     pass
 
 
@@ -1750,19 +1768,43 @@ def what_if(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, 
     # calculate Bullish and Bearish Divergence
     # Iffy in sideways market
 
-    # MAC.D Strategy
-    # Long if MACD Line crosses the signal line below the 0 line and the current_price > EMA200 and EMA100
-    # Short if MACD line cross the signal line above the 0 line and the current_price < EMA200 and EMA100
-    # iffy in sideways market. Identify key supports and wait for the price to hit the support level twice in a row and then check if the MACD line crosses the signal line below the 0 line.
-    # histogram = MACD.macd - MACD.signal. Positive histogram is green and bullish. Negative histogram is red and bearish.
-    # For a long position with isolated margin, the liquidation price is calculated as: Entry price / (1 + (Initial margin ratio / Leverage)) . For a short position with isolated margin, the formula is Entry price / (1 - (Initial margin ratio / Leverage))
 
-
-def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, save_datafram: bool = False, interval: str = "4h", skip_btc: bool = True, show_leverage: bool = True):
+def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, save_dataframe: bool = False, interval: str = "4h"):
+    # For a long position with isolated margin, the liquidation price is calculated as: Entry price / (1 + (Initial margin ratio / Leverage)) .
     long_dataframe = pd.DataFrame()
+    if os.path.exists(paths.ACCOUNT_BALANCE_FILE):
+        account_balance_dataframe = pd.read_csv(paths.ACCOUNT_BALANCE_FILE)
+    else:
+        account_balance_dataframe = get_account_balance(username=CONFIG["Owner"]["main_username"], save_dataframe=True)
+    account_balance_dataframe = account_balance_dataframe[account_balance_dataframe['max_leverage'] > 1]
+    for coin in account_balance_dataframe["market"].values:
+            if "USDT" in coin:
+                coin_1 = coin.split("USDT")[0]
+                coin_2 = "USDT"
+            elif "BTC" in coin:
+                coin_1 = coin.split("BTC")[0]
+                coin_2 = "BTC"
+            elif "USDC" in coin:
+                coin_1 = coin.split("USDC")[0]
+                coin_2 = "USDC"
+            current_price = get_ticker(coin_1=coin_1, coin_2=coin_2)['last_price']
+            indicator_data = get_indicator_data(coin_1=coin_1, coin_2 = coin_2, interval=interval)
+            print(coin_1+coin_2, current_price.values[0], indicator_data["RSI"], indicator_data["BB.lower"])
+            try:
+                if indicator_data["RSI"] < 25 and current_price < indicator_data['BB.Lower']:
+                    long_dataframe['market'] = coin_1+coin_2
+                    long_dataframe['RSI'] = indicator_data['RSI']
+                    long_dataframe['BB.upper'] = indicator_data['BB.upper']
+                    long_dataframe['BB.lower'] = indicator_data['BB.lower']
+                    long_dataframe['current_price'] = current_price
+            except Exception as e:
+                print(e)
+                pass
+    print(long_dataframe)
     if all_coins:
-        dataframe = get_markets_details(all_coins=all_coins, skip_btc=skip_btc, show_leverage=show_leverage)
-        print(dataframe)
+        dataframe = get_markets_details(all_coins=all_coins)
+        dataframe.fillna(0, inplace=True)
+        dataframe = dataframe.loc[dataframe['max_leverage'] > 1]
         for coin in dataframe["coindcx_name"].values:
             if "USDT" in coin:
                 coin_1 = coin.split("USDT")[0]
@@ -1775,7 +1817,7 @@ def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: b
                 coin_2 = "USDC"
             current_price = get_ticker(coin_1=coin_1, coin_2=coin_2)['last_price']
             indicator_data = get_indicator_data(coin_1=coin_1, coin_2 = coin_2, interval=interval)
-            print(coin_1+coin_2, current_price)
+            print(coin_1+coin_2, current_price.values[0])
             try:
                 if indicator_data["RSI"] < 25 and current_price < indicator_data['BB.Lower']:
                     long_dataframe['market'] = coin_1+coin_2
@@ -1783,16 +1825,21 @@ def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: b
                     long_dataframe['BB.upper'] = indicator_data['BB.upper']
                     long_dataframe['BB.lower'] = indicator_data['BB.lower']
                     long_dataframe['current_price'] = current_price
+                    logging.info(f"{coin_1+coin_2} can be longed at {current_price.values[0]} as its RSI is {indicator_data['RSI']} and the BB lower is {indicator_data['BB.lower']}")
+                    print(f"{coin_1+coin_2} can be longed at {current_price.values[0]} as its RSI is {indicator_data['RSI']} and the BB lower is {indicator_data['BB.lower']}")
             except Exception as e:
+                logging.info(e)
                 print(e)
                 pass
-    if save_datafram:
+    send_mail(f"The following can be longed: {long_dataframe}!", CONFIG["Owner"]["main_username"])
+    if save_dataframe:
         long_dataframe.to_csv(os.path.join(constants.MARKET_DATA_DIRECTORY, "\long_recommendations.csv"))
         return long_dataframe
     return long_dataframe
 
 
-def short_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, save_datafram: bool = False, interval: str = "4h"):
+def short_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, save_dataframe: bool = False, interval: str = "4h"):
+    # For a short position with isolated margin, the formula is Entry price / (1 - (Initial margin ratio / Leverage))
     short_dataframe = pd.DataFrame()
     if all_coins:
         dataframe = get_market_data()
@@ -1817,25 +1864,18 @@ def short_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: 
                 short_dataframe['BB.lower'] = indicator_data['BB.lower']
                 short_dataframe['current_price'] = current_price
 
-    if save_datafram:
+    if save_dataframe:
         short_dataframe.to_csv(os.path.join(constants.MARKET_DATA_DIRECTORY, "\long_recommendations.csv"))
         return short_dataframe
     return short_dataframe
 
 
-def sample():
-    sample_dataframe = crypto_price_tracker()
-    # crypto_dataframe = crypto_price_tracker()
-
-    # crypto_dataframe = pd.concat([sample_dataframe, market_dataframe], axis=1)
-    # crypto_dataframe = pd.merge(sample_dataframe, market_dataframe, on='market', how='left').fillna(0)
-    # print(crypto_dataframe)
-
 if __name__ == "__main__":
     # sample()
+    # print(get_keys(username="vishalnadig"))
     # what_if(coin_1="RNDR")
     # print(get_markets_details(all_coins=True, show_leverage_short=True))
-    # long_recommendations(all_coins=True, skip_btc=True)
+    # long_recommendations(all_coins=True)
     # print(get_markets_details(all_coins=True))
     crypto_price_tracker(save_dataframe=True)  # Use this
     # price_follower()
