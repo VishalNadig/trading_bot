@@ -193,7 +193,6 @@ def get_ticker(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = Fals
 
 
 def get_market_data(save_dataframe: bool = False, skip_btc: bool = False) -> pd.DataFrame:
-    # TODO: Add Currencies to include feature
     """Get the market data of all coins in the market currently.
 
     Args:
@@ -657,6 +656,10 @@ def account_trade_history(username: str = CONFIG["Owner"]["main_username"], save
     dataframe['timestamp'] = pd.to_datetime(dataframe["timestamp"], unit="ms") - timedelta(
             hours=7, minutes=0
         )
+    dataframe['cost'] = dataframe['quantity'].astype(float) * (dataframe['price'].astype(float) + dataframe['fee_amount'].astype(float))
+    dataframe.drop_duplicates(subset=["order_id"], keep="first", inplace=True)
+    dataframe.reset_index(drop=True, inplace=True)
+
     if save_dataframe:
         dataframe.to_csv(paths.ORDER_HISTORY_FILE)
     return dataframe
@@ -1424,7 +1427,7 @@ def get_price_of_coin_on_date(
             logging.info("Getting all coins")
             complete_dataframe = pd.DataFrame()
             dataframe = get_market_data()
-            date_required = datetime.now() - datetime.strptime(date, "%d-%m-%Y")
+            date_required = datetime.now() - datetime.strptime(date, "%Y-%m-%d")
             count = 1
             for coins in dataframe["market"].values:
                 if "USDT" in coins:
@@ -1454,7 +1457,7 @@ def get_price_of_coin_on_date(
             )
         else:
             try:
-                date_required = datetime.now() - datetime.strptime(date, "%d-%m-%Y")
+                date_required = datetime.now() - datetime.strptime(date, "%Y-%m-%d")
                 dataframe = get_candles(
                     coin_1=coin_1, coin_2=coin_2, interval="1d", limit=date_required.days
                 )
@@ -1769,7 +1772,7 @@ def what_if(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, 
     # Iffy in sideways market
 
 
-def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, save_dataframe: bool = False, interval: str = "4h"):
+def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, save_dataframe: bool = False, interval: str = "4h", balance_only: bool= False):
     """
     Generates long recommendations based on certain criteria.
 
@@ -1790,7 +1793,8 @@ def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: b
     else:
         account_balance_dataframe = get_account_balance(username=CONFIG["Owner"]["main_username"], save_dataframe=True)
     account_balance_dataframe = account_balance_dataframe[account_balance_dataframe['max_leverage'] > 1]
-    for coin in account_balance_dataframe["market"].values:
+    if balance_only:
+        for coin in account_balance_dataframe["market"].values:
             if "USDT" in coin:
                 coin_1 = coin.split("USDT")[0]
                 coin_2 = "USDT"
@@ -1813,11 +1817,14 @@ def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: b
             except Exception as e:
                 print(e)
                 pass
-    print(long_dataframe)
+        print(long_dataframe)
+        if not long_dataframe.empty:
+            send_mail(f"The following can be longed: {long_dataframe}!", CONFIG["Owner"]["main_username"])
     if all_coins:
         dataframe = get_markets_details(all_coins=all_coins)
         dataframe.fillna(0, inplace=True)
         dataframe = dataframe.loc[dataframe['max_leverage'] > 1]
+        dataframe.sort_values(by="max_leverage", ascending=False, inplace=True)
         for coin in dataframe["coindcx_name"].values:
             if "USDT" in coin:
                 coin_1 = coin.split("USDT")[0]
@@ -1832,7 +1839,7 @@ def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: b
             indicator_data = get_indicator_data(coin_1=coin_1, coin_2 = coin_2, interval=interval)
             print(coin_1+coin_2, current_price.values[0])
             try:
-                if indicator_data["RSI"] < 25 and current_price < indicator_data['BB.Lower']:
+                if indicator_data["RSI"] < 30 and current_price < indicator_data['BB.Lower']:
                     long_dataframe['market'] = coin_1+coin_2
                     long_dataframe['RSI'] = indicator_data['RSI']
                     long_dataframe['BB.upper'] = indicator_data['BB.upper']
@@ -1844,7 +1851,8 @@ def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: b
                 logging.info(e)
                 print(e)
                 pass
-    send_mail(f"The following can be longed: {long_dataframe}!", CONFIG["Owner"]["main_username"])
+    if not long_dataframe.empty:
+        send_mail(f"The following can be longed: {long_dataframe}!", CONFIG["Owner"]["main_username"])
     if save_dataframe:
         long_dataframe.to_csv(os.path.join(constants.MARKET_DATA_DIRECTORY, "\long_recommendations.csv"))
         return long_dataframe
@@ -1884,31 +1892,24 @@ def short_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: 
 
 
 if __name__ == "__main__":
-    # sample()
+    dataframe = account_trade_history(username="vishalnadig", limit= 1000)
+    print(dataframe)
+    print(dataframe[dataframe['symbol'] == "TRADEUSDT"].value_counts("side"))
     # print(get_keys(username="vishalnadig"))
     # what_if(coin_1="RNDR")
     # print(get_markets_details(all_coins=True, show_leverage_short=True))
     # long_recommendations(all_coins=True)
-    # print(get_markets_details(all_coins=True))
-    crypto_price_tracker(save_dataframe=True)  # Use this
+    # crypto_price_tracker(save_dataframe=True)  # Use this
     # price_follower()
-    # print(get_account_balance(save_dataframe = True))
-    # print(get_keys(username="vishalnadig")[1])
-    # print(account_trade_history(limit= 1000))
-    # print(get_keys(username="vishalnadig"))
-    # account_trade_history(username="vishalnadig")
+    print(get_account_balance(save_dataframe = True))
     # print(initialize())
     # print(get_active_orders(username="vishalnadig"))
     # print(get_market_data()['market'].values)
-    # print(get_markets_details(coin_1="ELU")['ecode'])
-    # print(get_indicator_data(coin_1="ELU"))
     # print(get_candles(coin_1="1000SAT", coin_2="USDT", interval="4h", limit=1))
     # print(get_market_indicator(all_coins=True))
     # print(get_indicator_data(coin_1="1000SATS", coin_2="USDT", market="Binance", screener_name="Crypto", interval="4h"))
     # print(get_price_of_coin_on_date(date="13-10-2023", all_coins=True))
     # print(fetch_lend_orders())
-    # account_trade_history()
-    # print(get_keys(username="vishalnadig"))
     # get_price_difference("NEAR")
     # print(get_buy_suggestions())
     ...
