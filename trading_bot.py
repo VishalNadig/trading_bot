@@ -1773,7 +1773,7 @@ def what_if(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, 
     # Iffy in sideways market
 
 
-def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, save_dataframe: bool = False, interval: str = "4h", balance_only: bool= False):
+def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, save_dataframe: bool = False, interval: str = "5m", balance_only: bool= False, max_leverage: int = 2):
     """
     Generates long recommendations based on certain criteria.
 
@@ -1793,7 +1793,7 @@ def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: b
         account_balance_dataframe = pd.read_csv(paths.ACCOUNT_BALANCE_FILE)
     else:
         account_balance_dataframe = get_account_balance(username=CONFIG["Owner"]["main_username"], save_dataframe=True)
-    account_balance_dataframe = account_balance_dataframe[account_balance_dataframe['max_leverage'] > 1]
+    account_balance_dataframe = account_balance_dataframe[account_balance_dataframe['max_leverage'] > max_leverage]
     if balance_only:
         for coin in account_balance_dataframe["market"].values:
             if "USDT" in coin:
@@ -1805,26 +1805,37 @@ def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: b
             elif "USDC" in coin:
                 coin_1 = coin.split("USDC")[0]
                 coin_2 = "USDC"
-            current_price = get_ticker(coin_1=coin_1, coin_2=coin_2)['last_price']
+            current_price = get_ticker(coin_1=coin_1, coin_2=coin_2)['last_price'].astype(float).values[0]
             indicator_data = get_indicator_data(coin_1=coin_1, coin_2 = coin_2, interval=interval)
             print(coin_1+coin_2, current_price.values[0], indicator_data["RSI"], indicator_data["BB.lower"])
             try:
-                if indicator_data["RSI"] < 25 and current_price < indicator_data['BB.Lower']:
+                print(indicator_data)
+                if indicator_data["RSI"] < 30 and current_price < indicator_data['BB.lower'].values[0]:
+                    print(indicator_data)
                     long_dataframe['market'] = coin_1+coin_2
                     long_dataframe['RSI'] = indicator_data['RSI']
                     long_dataframe['BB.upper'] = indicator_data['BB.upper']
                     long_dataframe['BB.lower'] = indicator_data['BB.lower']
+                    long_dataframe['MACD.signal'] = indicator_data['MACD.signal']
+                    long_dataframe['current_price'] = current_price
+                elif indicator_data['RSI'] < 30 and indicator_data['MACD.signal'] > indicator_data['MACD.macd']:
+                    print(indicator_data)
+                    long_dataframe['market'] = coin_1+coin_2
+                    long_dataframe['RSI'] = indicator_data['RSI']
+                    long_dataframe['BB.upper'] = indicator_data['BB.upper']
+                    long_dataframe['BB.lower'] = indicator_data['BB.lower']
+                    long_dataframe['MACD.signal'] = indicator_data['MACD.signal']
                     long_dataframe['current_price'] = current_price
             except Exception as e:
                 print(e)
                 pass
         print(long_dataframe)
         if not long_dataframe.empty:
-            send_mail(f"The following can be longed: {long_dataframe}!", CONFIG["Owner"]["main_username"])
+            send_mail(f"The following can be longed: {long_dataframe}!", CONFIG["Owner"]["email"])
     if all_coins:
         dataframe = get_markets_details(all_coins=all_coins)
         dataframe.fillna(0, inplace=True)
-        dataframe = dataframe.loc[dataframe['max_leverage'] > 1]
+        dataframe = dataframe.loc[dataframe['max_leverage'] > max_leverage]
         dataframe.sort_values(by="max_leverage", ascending=False, inplace=True)
         for coin in dataframe["coindcx_name"].values:
             if "USDT" in coin:
@@ -1836,24 +1847,33 @@ def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: b
             elif "USDC" in coin:
                 coin_1 = coin.split("USDC")[0]
                 coin_2 = "USDC"
-            current_price = get_ticker(coin_1=coin_1, coin_2=coin_2)['last_price']
+            current_price = get_ticker(coin_1=coin_1, coin_2=coin_2)['last_price'].astype(float)
             indicator_data = get_indicator_data(coin_1=coin_1, coin_2 = coin_2, interval=interval)
             print(coin_1+coin_2, current_price.values[0])
             try:
-                if indicator_data["RSI"] < 30 and current_price < indicator_data['BB.Lower']:
+                # print(type(indicator_data["RSI"]), type(indicator_data["BB.lower"]), type(indicator_data["MACD.macd"]), type(indicator_data["MACD.signal"]))
+                if indicator_data["RSI"] < 30 and current_price.values[0] < indicator_data['BB.lower']:
                     long_dataframe['market'] = coin_1+coin_2
                     long_dataframe['RSI'] = indicator_data['RSI']
                     long_dataframe['BB.upper'] = indicator_data['BB.upper']
                     long_dataframe['BB.lower'] = indicator_data['BB.lower']
+                    long_dataframe['MACD.signal'] = indicator_data['MACD.signal']
                     long_dataframe['current_price'] = current_price
-                    logging.info(f"{coin_1+coin_2} can be longed at {current_price.values[0]} as its RSI is {indicator_data['RSI']} and the BB lower is {indicator_data['BB.lower']}")
+                elif indicator_data['RSI'] < 30 and indicator_data['MACD.signal'] > indicator_data['MACD.macd']:
+                    long_dataframe['market'] = coin_1+coin_2
+                    long_dataframe['RSI'] = indicator_data['RSI']
+                    long_dataframe['BB.upper'] = indicator_data['BB.upper']
+                    long_dataframe['BB.lower'] = indicator_data['BB.lower']
+                    long_dataframe['MACD.signal'] = indicator_data['MACD.signal']
+                    long_dataframe['current_price'] = current_price
                     print(f"{coin_1+coin_2} can be longed at {current_price.values[0]} as its RSI is {indicator_data['RSI']} and the BB lower is {indicator_data['BB.lower']}")
             except Exception as e:
                 logging.info(e)
-                print(e)
+                print(f'Exception is {e} for {coin_1+coin_2}')
+                print(indicator_data)
                 pass
     if not long_dataframe.empty:
-        send_mail(f"The following can be longed: {long_dataframe}!", CONFIG["Owner"]["main_username"])
+        send_mail(f"The following can be longed: {long_dataframe}!", CONFIG["Owner"]["email"])
     if save_dataframe:
         long_dataframe.to_csv(os.path.join(constants.MARKET_DATA_DIRECTORY, "\long_recommendations.csv"))
         return long_dataframe
@@ -1891,9 +1911,10 @@ def short_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: 
         return short_dataframe
     return short_dataframe
 
+
 def run_on_loop():
     while True:
-        long_recommendations(balance_only=True)
+        long_recommendations(all_coins=True)
 
 
 if __name__ == "__main__":
@@ -1904,8 +1925,8 @@ if __name__ == "__main__":
     # what_if(coin_1="RNDR")
     # print(get_markets_details(all_coins=True, show_leverage_short=True))
     # long_recommendations(all_coins=True)
-    # crypto_price_tracker(save_dataframe=True)  # Use this
-    run_on_loop()
+    crypto_price_tracker(save_dataframe=True)  # Use this
+    # run_on_loop()
     # print(get_account_balance(save_dataframe = True))
     # print(initialize())
     # print(get_active_orders(username="vishalnadig"))
