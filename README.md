@@ -10,6 +10,9 @@ This is still Work in Progress.
 
 # FUNCTIONS
 ## def initialize() -> None:
+    """
+        Function to initialize necessary directories and files if they do not exist.
+    """
 
 
 ## def get_keys(first_name: str = "", last_name: str = "", username: str = "") -> tuple:
