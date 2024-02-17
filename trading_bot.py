@@ -46,6 +46,9 @@ logging.basicConfig(
 
 
 def initialize():
+    """
+    Function to initialize necessary directories and files if they do not exist.
+    """
     if not os.path.exists(os.path.join(paths.HOME_DIRECTORY, paths.MARKET_DATA_DIRECTORY)):
         logging.info(rf"{paths.MARKET_DATA_DIRECTORY} does not exist! Creating {paths.MARKET_DATA_DIRECTORY}")
         os.mkdir(os.path.join(paths.HOME_DIRECTORY, paths.MARKET_DATA_DIRECTORY))
