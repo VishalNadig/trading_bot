@@ -1,5 +1,5 @@
 # TRADING BOT DOCUMENTATION
-
+This is still Work in Progress.
 # GENERAL INFORMATION
 1. You will need to have the config files with you. The megamind_config file is ideal.
 2. You will also need to install and setup poetry first.
@@ -13,7 +13,7 @@
 
 
 ## def get_keys(first_name: str = "", last_name: str = "", username: str = "") -> tuple:
-    """Get API key and secret key for the specified username. If username is not mentioned then, first name and last name of the username can be used to retrieve the keys.
+    """Get the API key and secret key for the specified username. If the username is not mentioned then, the first name and last name of the username can be used to retrieve the keys.
 
     Args:
         first_name (str, optional): First name of the username. Defaults to "".
