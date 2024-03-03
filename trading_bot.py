@@ -182,7 +182,8 @@ def get_ticker(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = Fals
     url = URL_DICT["TICKER_URL"]
     response = requests.get(url)
     data = response.json()
-    coins_dictionary = {}
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
     if all_coins:
         ...
     else:
@@ -258,6 +259,9 @@ def get_markets_details(
     data = response.json()
     # print(data)
     coins_dictionary = {}
+
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
 
     if all_coins:
         for coins in data:
@@ -339,6 +343,9 @@ def place_buy_limit_order(
         price (float): The price at which to buy.
         total_quantity (float): The number of stocks or coins to buy.
     """
+
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
     secret_bytes = bytes(get_keys(username=username)[1], encoding="utf-8")
     time_stamp = int(round(time.time() * 1000))
     body = {
@@ -395,6 +402,8 @@ def place_sell_limit_order(
         total_quantity (float): The number of stocks or coins to sell.
     """
 
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
     secret_bytes = bytes(get_keys(username=username)[1], encoding="utf-8")
     time_stamp = int(round(time.time() * 1000))
 
@@ -450,6 +459,8 @@ def place_market_buy_order(
         total_quantity (float): The number of stocks or coins to buy.
     """
 
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
     secret_bytes = bytes(get_keys(username=username)[1], encoding="utf-8")
     time_stamp = int(round(time.time() * 1000))
 
@@ -507,6 +518,8 @@ def place_market_sell_order(
     secret_bytes = bytes(get_keys(username=username)[1], encoding="utf-8")
     time_stamp = int(round(time.time() * 1000))
 
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
     body = {
         "side": "sell",  # Toggle between 'buy' or 'sell'.
         "order_type": "market_order",  # Toggle between a 'market_order' or 'limit_order'.
@@ -804,6 +817,8 @@ def bot_trader(
         screener_name (str): Either "India" or "Crypto".
         interval (str): Interval of chart "1m", "5m", "30m", "1h", "2h", "4h", "1d", "1W", "1M
     """
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
     no_of_trades = 0
     open_position = False
     min_order_value = 0.0001
@@ -1002,10 +1017,12 @@ def get_candles(
     Returns:
         pd.DataFrame: The historical candle data of the coin market pair.
     """
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
     try:
         url = (
             URL_DICT["CANDLES_URL"]
-            + f"?pair={get_markets_details(coin_1=coin_1,coin_2=coin_2)['pair']}&interval={interval}&limit={limit}"
+            + f"?pair={get_markets_details(coin_1=coin_1,coin_2=coin_2)['pair'].values[0]}&interval={interval}&limit={limit}"
         )
         response = requests.get(url, timeout=60)
         data = response.json()
@@ -1013,7 +1030,7 @@ def get_candles(
         dataframe["time"] = pd.to_datetime(dataframe["time"], unit="ms")
 
         if save_dataframe:
-            dataframe.to_csv(f"{coin_1}_{coin_2}_candles.csv")
+            dataframe.to_csv(f"{constants.MARKET_DATA_DIRECTORY}/{coin_1}_{coin_2}_{interval}_candles.csv")
             return dataframe
         else:
             return dataframe
@@ -1041,6 +1058,8 @@ def get_indicator_data(
     Returns:
         list: The indicator data for the market pair in an exchange.
     """
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
     try:
         trading_pair = TA_Handler(
             symbol=f"{coin_1+coin_2}",
@@ -1153,6 +1172,8 @@ def plot_historical_data(
     Returns:
         pyplot: Plot of the data
     """
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
     candle_data = get_candles(coin_1=coin_1, coin_2=coin_2, interval=interval, limit=limit)
     candle_data.plot(
         x="time",
@@ -1196,6 +1217,8 @@ def price_tracker_mail(
         mail (bool optional): Set to True to send mail of the price. Defaults to False.
         receiver (str, optional): The recipient of the mail. Must be a valid gmail ID. Defaults to
     """
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
     coin_details = get_ticker(coin_1=coin_1, coin_2=coin_2)
     logging.info(coin_details)
     if price != 0.0:
@@ -1230,6 +1253,8 @@ def buy_sell_recommendation(
             - 200: The RSI value of the first cryptocurrency is over 70 and hence is in a strong SELL zone.
             - 200: The RSI value of the first cryptocurrency is less than 30 and hence is in a BUY zone.
     """
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
     try:
         indicator = get_indicator_data(
             coin_1=coin_1,
@@ -1247,10 +1272,6 @@ def buy_sell_recommendation(
 
     except Exception:
         pass
-
-
-def candle_plot(coin_1: str = "BTC", coin_2: str = "USDT", interval: str = "4h", limit: str = 100):
-    candle_data = get_candles(coin_1=coin_1, coin_2=coin_2, interval=interval, limit=limit)
 
 
 def fetch_lend_orders(username: str = CONFIG["Owner"]["main_username"]):
@@ -1422,6 +1443,8 @@ def get_price_of_coin_on_date(
     Returns:
         dict: A dictionary containing the price of the coin on the specified date.
     """
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
     print("Getting price of coin on date")
     if date and number_of_days:
         return {404: "Please provide either a date or number of days."}
@@ -1497,6 +1520,8 @@ def get_market_indicator(
     Returns:
         None
     """
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
     count = 1
     coins_dictionary = {}
     dataframe = pd.DataFrame()
@@ -1622,7 +1647,7 @@ def get_market_indicator(
 
 def get_price_difference(coin: str = ""):
     oct_dataframe = pd.read_csv(rf"{constants.MARKET_DATA_DIRECTORY}\market_data_13-10-2023.csv")
-
+    coin = coin.upper()
     if coin:
         oct_dataframe = oct_dataframe.loc[oct_dataframe["market"].str.contains(coin + "USDT")]
         current_price = get_ticker(coin_1=coin, coin_2="USDT")
@@ -1790,6 +1815,8 @@ def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: b
     Returns:
         pandas.DataFrame: The resulting dataframe containing long recommendations.
     """
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
     # For a long position with isolated margin, the liquidation price is calculated as: Entry price / (1 + (Initial margin ratio / Leverage)) .
     long_dataframe = pd.DataFrame()
     if os.path.exists(paths.ACCOUNT_BALANCE_FILE):
@@ -1887,6 +1914,9 @@ def long_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: b
 
 def short_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: bool = False, save_dataframe: bool = False, interval: str = "4h"):
     # For a short position with isolated margin, the formula is Entry price / (1 - (Initial margin ratio / Leverage))
+
+    coin_1 = coin_1.upper()
+    coin_2 = coin_2.upper()
     short_dataframe = pd.DataFrame()
     if all_coins:
         dataframe = get_market_data()
@@ -1916,31 +1946,16 @@ def short_recommendations(coin_1: str = "BTC", coin_2: str = "USDT", all_coins: 
         return short_dataframe
     return short_dataframe
 
+import json
 
 def run_on_loop():
-    while True:
-        long_recommendations(all_coins=True)
-
+    with open(...) as file:
+        file = json.load(file)
+        while True:
+            for coins in file:
+                print(coins)
 
 if __name__ == "__main__":
-    # dataframe = account_trade_history(username="vishalnadig", limit= 1000)
-    # print(dataframe)
-    # print(dataframe[dataframe['symbol'] == "TRADEUSDT"].value_counts("side"))
-    # print(get_keys(username="vishalnadig"))
-    # what_if(coin_1="RNDR")
-    # print(get_markets_details(all_coins=True, show_leverage_short=True))
-    # long_recommendations(all_coins=True)
-    crypto_price_tracker(save_dataframe=True)  # Use this
+    # crypto_price_tracker(save_dataframe=True)
     # run_on_loop()
-    # print(get_account_balance())
-    # print(initialize())
-    # print(get_active_orders(username="vishalnadig"))
-    # print(get_market_data()['market'].values)
-    # print(get_candles(coin_1="1000SAT", coin_2="USDT", interval="4h", limit=1))
-    # print(get_market_indicator(all_coins=True))
-    # print(get_indicator_data(coin_1="1000SATS", coin_2="USDT", market="Binance", screener_name="Crypto", interval="4h"))
-    # print(get_price_of_coin_on_date(date="13-10-2023", all_coins=True))
-    # print(fetch_lend_orders())
-    # get_price_difference("NEAR")
-    # print(get_buy_suggestions())
-    ...
+    get_candles(coin_1="BTC", coin_2="USDT", interval="1d", limit=1000, save_dataframe=True)
