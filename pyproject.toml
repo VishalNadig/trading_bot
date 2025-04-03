@@ -1,26 +1,25 @@
-[tool.poetry]
+[project]
+authors = [
+    {name = "Vishal Nadig", email = "nadigvishal@gmail.com"},
+]
+requires-python = "<4.0,>=3.9"
+dependencies = [
+    "argparse<2.0.0,>=1.4.0",
+    "DateTime<5.0,>=4.7",
+    "toml<1.0.0,>=0.10.2",
+    "pandas<2.0.0,>=1.5.1",
+    "requests<3.0.0,>=2.28.1",
+    "tradingview-ta<4.0.0,>=3.3.0",
+    "pre-commit<3.0.0,>=2.20.0",
+    "ccxt<3.0.0,>=2.1.102",
+    "yagmail<1.0.0,>=0.15.293",
+]
 name = "trading_bot"
 version = "1.0.0"
 description = "Trading bot to algo-trade crypto and BSE/NSE stocks."
-authors = ["Vishal Nadig <nadigvishal@gmail.com>"]
 
-[tool.poetry.dependencies]
-python = "^3.9"
-argparse = "^1.4.0"
-DateTime = "^4.7"
-toml = "^0.10.2"
-pandas = "^1.5.1"
-requests = "^2.28.1"
-tradingview-ta = "^3.3.0"
-pre-commit = "^2.20.0"
-ccxt = "^2.1.102"
-yagmail = "^0.15.293"
-
-[tool.poetry.dev-dependencies]
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+[dependency-groups]
+dev = []
 
 [tool.flake8]
 max-line-length = 130
